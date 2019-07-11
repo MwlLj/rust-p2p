@@ -1,14 +1,14 @@
-struct CNet {
+pub struct CNet {
 	ip: String,
 	port: u32
 }
 
-struct CSelf {
+pub struct CSelf {
 	lanNet: CNet,
 	wanNet: CNet
 }
 
-struct CNode {
+pub struct CNode {
 	lanNet: CNet,
 	wanNet: CNet,
 	natType: String
