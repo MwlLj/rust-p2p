@@ -1,17 +1,19 @@
+use crate::enums;
+
 pub struct CNet {
-	ip: String,
-	port: u32
+	pub ip: String,
+	pub port: String
 }
 
 pub struct CSelf {
-	lanNet: CNet,
-	wanNet: CNet
+	pub lanNet: CNet,
+	pub wanNet: CNet
 }
 
 pub struct CNode {
-	lanNet: CNet,
-	wanNet: CNet,
-	natType: String
+	pub lanNet: CNet,
+	pub wanNet: CNet,
+	pub natType: enums::nat::Nat
 }
 
 pub trait IShared {

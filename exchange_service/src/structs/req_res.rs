@@ -1,13 +1,14 @@
 #[derive(Default)]
 pub struct CRequest {
-    selfUuid: String,
-    lanIp: String,
-    lanPort: String
+    pub selfUuid: String,
+    pub communicateUuid: String,
+    pub lanIp: String,
+    pub lanPort: String
 }
 
 #[derive(Default)]
 pub struct CCheckResponse {
-    selfUuid: String
+    pub selfUuid: String
 }
 
 impl CCheckResponse {
