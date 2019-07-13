@@ -2,12 +2,13 @@
 // ruled out NAT 3
 use crate::shared;
 use crate::nat;
-use crate::consts::proto;
+use crate::consts;
 use crate::decode;
 use crate::encode;
 use crate::structs;
 use crate::router;
 use crate::transmit;
+use crate::enums;
 
 use uuid::Uuid;
 
@@ -22,21 +23,19 @@ pub struct CRuledOut {
 }
 
 impl CRuledOut {
-    pub fn start(&self, port: u32) -> Result<(), std::io::Error> {
+    pub fn start(&self, port: u32, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
         let addr = self.joinAddr(port);
         let mut socket = match UdpSocket::bind(addr) {
             Ok(socket) => socket,
             Err(err) => return Err(err)
         };
-        // std::thread::spawn(move || {
-            loop {
-                self.listen(socket.try_clone().unwrap());
-            }
-        // });
+        loop {
+            self.listen(socket.try_clone().unwrap(), nat4IsTryMake);
+        }
         Ok(())
     }
 
-    fn listen(&self, socket: UdpSocket) -> Result<(), std::io::Error> {
+    fn listen(&self, socket: UdpSocket, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
         // get self addr info
         let mut buf = [0; 128];
         let (amt, src) = match socket.recv_from(&mut buf) {
@@ -47,6 +46,15 @@ impl CRuledOut {
             Ok(request) => request,
             Err(err) => return Err(err)
         };
+        if request.requestType == consts::proto::request_type_connect {
+            self.handleConnect(socket.try_clone().unwrap(), src, request, nat4IsTryMake);
+        } else if request.requestType == consts::proto::request_type_make_falied {
+            self.handleMakeFailed(socket.try_clone().unwrap(), src, request);
+        }
+        Ok(())
+    }
+
+    fn handleConnect(&self, socket: UdpSocket, src: SocketAddr, request: structs::req_res::CRequest, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
         let selfUuid = request.getSelfUuid();
         if selfUuid == "" {
             // first -> assign uuid
@@ -109,18 +117,14 @@ impl CRuledOut {
                 };
                 // check
                 let isCommunicate = router::peer::CPeer::peerCheck(&peerInfo, &node);
-                if isCommunicate {
-                    // make hole
-                    let mut peer1 = structs::req_res::CPeerNetResponse::default();
-                    let mut peer2 = structs::req_res::CPeerNetResponse::default();
-                    router::peer::CPeer::peerChange(&peerInfo, &mut peer1, &node, &mut peer2);
-                    let peer1Encode = encode::check::encodePeerNetResponse(&peer1);
-                    let peer2Encode = encode::check::encodePeerNetResponse(&peer2);
-                    // send to peer1
-                    self.sendToNode(socket.try_clone().unwrap(), peer2Encode.as_bytes(), &peerInfo);
-                    // send to peer2
-                    self.sendToNode(socket.try_clone().unwrap(), peer1Encode.as_bytes(), &node);
-                } else {
+                /*
+                    1. if isCommunicate == false -> try make hole
+                    2. if isCommunicate == true -> make hole
+                    ->
+                    is make hole success, client judge
+                */
+                if !nat4IsTryMake && !isCommunicate {
+                    // nat4 wantn't try make hole
                     // middle transmit
                     let middleAddr = self.transmitServiceFinder.transmitService();
                     let middle = structs::req_res::CPeerNetResponse{
@@ -130,9 +134,20 @@ impl CRuledOut {
                     };
                     let middleEncode = encode::check::encodePeerNetResponse(&middle);
                     // send to peer1
-                    self.sendToNode(socket.try_clone().unwrap(), middleEncode.as_bytes(), &peerInfo);
+                    self.sendToNode(socket.try_clone().unwrap(), middleEncode.as_bytes(), &peerInfo.wanNet);
                     // send to peer2
-                    self.sendToNode(socket.try_clone().unwrap(), middleEncode.as_bytes(), &node);
+                    self.sendToNode(socket.try_clone().unwrap(), middleEncode.as_bytes(), &node.wanNet);
+                } else {
+                    // make hole
+                    let mut peer1 = structs::req_res::CPeerNetResponse::default();
+                    let mut peer2 = structs::req_res::CPeerNetResponse::default();
+                    router::peer::CPeer::peerChange(isCommunicate, &peerInfo, &mut peer1, &node, &mut peer2);
+                    let peer1Encode = encode::check::encodePeerNetResponse(&peer1);
+                    let peer2Encode = encode::check::encodePeerNetResponse(&peer2);
+                    // send to peer1
+                    self.sendToNode(socket.try_clone().unwrap(), peer2Encode.as_bytes(), &peerInfo.wanNet);
+                    // send to peer2
+                    self.sendToNode(socket.try_clone().unwrap(), peer1Encode.as_bytes(), &node.wanNet);
                 }
             } else {
                 // add
@@ -152,6 +167,24 @@ impl CRuledOut {
         }
         Ok(())
     }
+
+    fn handleMakeFailed(&self, socket: UdpSocket, src: SocketAddr, request: structs::req_res::CRequest) -> Result<(), std::io::Error> {
+        // middle transmit
+        let middleAddr = self.transmitServiceFinder.transmitService();
+        let middle = structs::req_res::CPeerNetResponse{
+            peerIp: middleAddr.ip().to_string(),
+            peerPort: middleAddr.port().to_string(),
+            portInterval: 0
+        };
+        let middleEncode = encode::check::encodePeerNetResponse(&middle);
+        // send to client
+        let node = shared::CNet{
+            ip: request.getLanIp().to_string(),
+            port: request.getLanPort().to_string()
+        };
+        self.sendToNode(socket.try_clone().unwrap(), middleEncode.as_bytes(), &node);
+        Ok(())
+    }
 }
 
 impl CRuledOut {
@@ -162,15 +195,15 @@ impl CRuledOut {
         addr
     }
 
-    fn sendToNode(&self, socket: UdpSocket, data: &[u8], dst: &shared::CNode) {
-        socket.send_to(data, SocketAddr::new(dst.wanNet.ip.parse().expect("ip parse error"), dst.wanNet.port.parse().expect("port parse error")));
+    fn sendToNode(&self, socket: UdpSocket, data: &[u8], dst: &shared::CNet) {
+        socket.send_to(data, SocketAddr::new(dst.ip.parse().expect("ip parse error"), dst.port.parse().expect("port parse error")));
     }
 }
 
 impl CRuledOut {
     fn new(sharedMode: &str, transmitServiceFindMode: &str, dial: &str) -> Result<CRuledOut, String> {
-        if sharedMode == proto::storage_mode_redis {
-            if transmitServiceFindMode == proto::transmit_service_find_mode_config {
+        if sharedMode == consts::run::storage_mode_redis {
+            if transmitServiceFindMode == consts::run::transmit_service_find_mode_config {
                 return Ok(CRuledOut{
                     sharedStorage: Box::new(shared::redis::CRedis::new(dial)),
                     natCheck: Box::new(nat::simple::CSimple{}),

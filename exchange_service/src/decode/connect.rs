@@ -1,38 +1,32 @@
-use std::io::Error;
-
 use crate::structs::req_res;
 
-pub fn decodeConnectRequest(buf: &[u8]) -> Result<req_res::CRequest, Error> {
+use rust_parse;
+
+pub fn decodeConnectRequest(buf: &[u8]) -> Result<req_res::CRequest, std::io::Error> {
     let mut req: req_res::CRequest = req_res::CRequest::default();
-    let mut index = 0;
-    let mut s = String::new();
-    for item in buf.iter() {
-        if *item as char == '|' {
-            if index == 0 {
-                req.selfUuid = s.to_string();
-            } else if index == 1 {
-                req.communicateUuid = s.to_string();
-            } else if index == 2 {
-                req.lanIp = s.to_string();
-            }
-            index += 1;
-            s.clear();
-        } else {
-            s.push(*item as char);
+    rust_parse::string::u8_parse::u8ArrSplit(buf, '|' as u8, &mut |index: &u8, field: &str| {
+        if *index == 0 {
+            req.requestType = field.to_string();
+        } else if *index == 1 {
+            req.selfUuid = field.to_string();
+        } else if *index == 2 {
+            req.communicateUuid = field.to_string();
+        } else if *index == 3 {
+            req.lanIp = field.to_string();
+        } else if *index == 4 {
+            req.lanPort = field.to_string();
         }
-    }
-    if index == 3 {
-        req.setLanPort(&s);
-    }
+    });
     Ok(req)
 }
 
 #[test]
 #[ignore]
 fn testDecodeConnectRequest() {
-    // ||192.168.9.15|123456
-    let v = [124, 124, 49, 57, 50, 46, 49, 54, 56, 46, 57, 46, 49, 53, 124, 49, 50, 51, 52, 53, 54];
+    // connect|||192.168.9.15|123456
+    let v = [0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 124, 124, 124, 49, 57, 50, 46, 49, 54, 56, 46, 57, 46, 49, 53, 124, 49, 50, 51, 52, 53, 54];
     if let Ok(req) = decodeConnectRequest(&v) {
+        assert_eq!(req.requestType, "connect");
         assert_eq!(req.getSelfUuid(), "");
         assert_eq!(req.communicateUuid, "");
         assert_eq!(req.getLanIp(), "192.168.9.15");

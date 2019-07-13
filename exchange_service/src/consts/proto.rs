@@ -1,2 +1,2 @@
-pub const storage_mode_redis: &str = "redis";
-pub const transmit_service_find_mode_config: &str = "config";
+pub const request_type_connect: &str = "connect";
+pub const request_type_make_falied: &str = "make_falied";

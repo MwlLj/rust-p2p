@@ -1,5 +1,6 @@
 #[derive(Default)]
 pub struct CRequest {
+    pub requestType: String,
     pub selfUuid: String,
     pub communicateUuid: String,
     pub lanIp: String,

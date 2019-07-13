@@ -24,12 +24,12 @@ impl CPeer {
         true
     }
 
-    pub fn peerChange(node1: &shared::CNode, peer1: &mut structs::req_res::CPeerNetResponse, node2: &shared::CNode, peer2: &mut structs::req_res::CPeerNetResponse) {
+    pub fn peerChange(isMakeHole: bool, node1: &shared::CNode, peer1: &mut structs::req_res::CPeerNetResponse, node2: &shared::CNode, peer2: &mut structs::req_res::CPeerNetResponse) {
         /*
             1. node1 wanIp == node2 wanIp -> may be in the lan -> change theirs lan net info
             2. other -> change theirs wan net info
         */
-        if node1.wanNet.ip.contains(&node2.wanNet.ip) {
+        if isMakeHole && node1.wanNet.ip.contains(&node2.wanNet.ip) {
             peer1.portInterval = 0;
             peer1.peerIp = node2.lanNet.ip.clone();
             peer1.peerPort = node2.lanNet.port.clone();
