@@ -29,13 +29,17 @@ impl CRuledOut {
             Ok(socket) => socket,
             Err(err) => return Err(err)
         };
-        loop {
-            self.listen(socket.try_clone().unwrap(), nat4IsTryMake);
-        }
-        Ok(())
+        self.listen(socket.try_clone().unwrap(), nat4IsTryMake)
     }
 
-    fn listen(&self, socket: UdpSocket, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
+    pub fn listen(&self, socket: UdpSocket, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
+        while let Ok(_) = self.handleRequest(socket.try_clone().unwrap(), nat4IsTryMake) {
+            thread::sleep(time::Duration::from_millis(500));
+        }
+        Err(std::io::Error::new(std::io::ErrorKind::AddrNotAvailable, "AddrNotAvailable"))
+    }
+
+    fn handleRequest(&self, socket: UdpSocket, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
         // get self addr info
         let mut buf = [0; 128];
         let (amt, src) = match socket.recv_from(&mut buf) {
