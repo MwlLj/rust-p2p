@@ -11,6 +11,13 @@ pub struct CCheckResponse {
     pub selfUuid: String
 }
 
+#[derive(Default)]
+pub struct CPeerNetResponse {
+    pub peerIp: String,
+    pub peerPort: String,
+    pub portInterval: i32
+}
+
 impl CCheckResponse {
     pub fn setSelfUuid(&mut self, selfUuid: &str) {
         self.selfUuid = selfUuid.to_string();
