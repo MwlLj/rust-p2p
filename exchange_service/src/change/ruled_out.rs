@@ -38,7 +38,7 @@ impl CRuledOut {
             Ok((amt, src)) => (amt, src),
             Err(err) => return Err(err)
         };
-        let request = match decode::connect::decodeConnectRequest(&buf) {
+        let request = match decode::connect::decodeConnectRequest(&buf[..amt]) {
             Ok(request) => request,
             Err(err) => return Err(err)
         };
@@ -46,6 +46,35 @@ impl CRuledOut {
             self.handleConnect(socket.try_clone().unwrap(), src, request, nat4IsTryMake);
         } else if request.requestType == consts::proto::request_type_make_falied {
             self.handleMakeFailed(socket.try_clone().unwrap(), src, request);
+        } else if request.requestType == consts::proto::request_type_try_make_finish {
+            self.handleTryMakeFinish(socket.try_clone().unwrap(), src, request);
+        }
+        Ok(())
+    }
+
+    fn handleTryMakeFinish(&self, socket: UdpSocket, src: SocketAddr, request: structs::req_res::CRequest) -> Result<(), &str> {
+        let mut tryCommunicateUuid = "try-".to_string();
+        tryCommunicateUuid.push_str(&request.communicateUuid);
+        let node = shared::CNode{
+            lanNet: shared::CNet{
+                ip: request.getLanIp().to_string(),
+                port: request.getLanPort().to_string()
+            },
+            wanNet: shared::CNet{
+                ip: src.ip().to_string(),
+                port: src.port().to_string()
+            },
+            natType: enums::nat::Nat::Nat1
+        };
+        if let Some(peerInfo) = self.sharedStorage.peerExist(&tryCommunicateUuid) {
+            // send to peer1
+            self.sendToNode(socket.try_clone().unwrap(), "".as_bytes(), &peerInfo.wanNet);
+            // send to peer2
+            self.sendToNode(socket.try_clone().unwrap(), "".as_bytes(), &node.wanNet);
+            self.sharedStorage.delNode(&tryCommunicateUuid);
+        } else {
+            // add try-communicateUuid
+            self.sharedStorage.addPeer(&tryCommunicateUuid, node, 60000);
         }
         Ok(())
     }
@@ -99,18 +128,18 @@ impl CRuledOut {
             });
             // delete selfUuid
             self.sharedStorage.delNode(selfUuid);
+            let node = shared::CNode{
+                lanNet: shared::CNet{
+                    ip: request.getLanIp().to_string(),
+                    port: request.getLanPort().to_string()
+                },
+                wanNet: shared::CNet{
+                    ip: src.ip().to_string(),
+                    port: src.port().to_string()
+                },
+                natType: natType
+            };
             if let Some(peerInfo) = self.sharedStorage.peerExist(&request.communicateUuid) {
-                let node = shared::CNode{
-                    lanNet: shared::CNet{
-                        ip: request.getLanIp().to_string(),
-                        port: request.getLanPort().to_string()
-                    },
-                    wanNet: shared::CNet{
-                        ip: src.ip().to_string(),
-                        port: src.port().to_string()
-                    },
-                    natType: natType
-                };
                 // check
                 let isCommunicate = router::peer::CPeer::peerCheck(&peerInfo, &node);
                 /*
@@ -145,20 +174,12 @@ impl CRuledOut {
                     // send to peer2
                     self.sendToNode(socket.try_clone().unwrap(), peer1Encode.as_bytes(), &node.wanNet);
                 }
+                // delete communicate
+                self.sharedStorage.delNode(&request.communicateUuid);
             } else {
                 // add
                 // add communicateUuid
-                self.sharedStorage.addPeer(&request.communicateUuid, shared::CNode{
-                    lanNet: shared::CNet{
-                        ip: request.getLanIp().to_string(),
-                        port: request.getLanPort().to_string()
-                    },
-                    wanNet: shared::CNet{
-                        ip: src.ip().to_string(),
-                        port: src.port().to_string()
-                    },
-                    natType: natType
-                }, 60000);
+                self.sharedStorage.addPeer(&request.communicateUuid, node, 60000);
             }
         }
         Ok(())

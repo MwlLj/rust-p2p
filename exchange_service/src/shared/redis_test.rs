@@ -39,7 +39,7 @@ fn addSelfTest() {
 }
 
 #[test]
-// #[ignore]
+#[ignore]
 fn selfExistTest() {
     if let Some(red) = redisConnect(redis_addr) {
         if let Some(s) = red.selfExist("self1") {
