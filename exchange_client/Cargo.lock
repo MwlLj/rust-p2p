@@ -1,0 +1,14 @@
+[[package]]
+name = "exchange_client"
+version = "0.1.0"
+dependencies = [
+ "rust_parse 0.1.0 (git+https://github.com/MwlLj/rust_parse)",
+]
+
+[[package]]
+name = "rust_parse"
+version = "0.1.0"
+source = "git+https://github.com/MwlLj/rust_parse#189fcf9f6e1e2d04d7d8ed24edb25d0df8f7c458"
+
+[metadata]
+"checksum rust_parse 0.1.0 (git+https://github.com/MwlLj/rust_parse)" = "<none>"
