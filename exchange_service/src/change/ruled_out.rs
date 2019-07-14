@@ -9,6 +9,7 @@ use crate::structs;
 use crate::router;
 use crate::transmit;
 use crate::enums;
+use crate::change;
 
 use uuid::Uuid;
 
@@ -23,15 +24,6 @@ pub struct CRuledOut {
 }
 
 impl CRuledOut {
-    pub fn start(&self, port: u32, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
-        let addr = self.joinAddr(port);
-        let mut socket = match UdpSocket::bind(addr) {
-            Ok(socket) => socket,
-            Err(err) => return Err(err)
-        };
-        self.listen(socket.try_clone().unwrap(), nat4IsTryMake)
-    }
-
     pub fn listen(&self, socket: UdpSocket, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
         while let Ok(_) = self.handleRequest(socket.try_clone().unwrap(), nat4IsTryMake) {
             thread::sleep(time::Duration::from_millis(500));
@@ -192,29 +184,52 @@ impl CRuledOut {
 }
 
 impl CRuledOut {
-    fn joinAddr(&self, port: u32) -> String {
-        let mut addr = String::from("0.0.0.0");
-        addr.push_str(":");
-        addr.push_str(&port.to_string());
-        addr
-    }
-
     fn sendToNode(&self, socket: UdpSocket, data: &[u8], dst: &shared::CNet) {
         socket.send_to(data, SocketAddr::new(dst.ip.parse().expect("ip parse error"), dst.port.parse().expect("port parse error")));
     }
 }
 
 impl CRuledOut {
-    fn new(sharedMode: &str, transmitServiceFindMode: &str, dial: &str) -> Result<CRuledOut, String> {
-        if sharedMode == consts::run::storage_mode_redis {
-            if transmitServiceFindMode == consts::run::transmit_service_find_mode_config {
-                return Ok(CRuledOut{
-                    sharedStorage: Box::new(shared::redis::CRedis::new(dial)),
-                    natCheck: Box::new(nat::simple::CSimple{}),
-                    transmitServiceFinder: Box::new(transmit::config_finder::CConfigFinder::new())
-                });
+    fn joinAddr(port: u32) -> String {
+        let mut addr = String::from("0.0.0.0");
+        addr.push_str(":");
+        addr.push_str(&port.to_string());
+        addr
+    }
+
+    fn new2(&self) -> Result<(), &str> {
+        Ok(())
+    }
+}
+
+impl CRuledOut {
+    // fn new(sharedMode: &str, transmitServiceFindMode: &str, dial: &str) -> Result<CRuledOut, String> {
+    fn new<'a>(param: &change::CCreateParam) -> Result<(), &'a str> {
+        let addr = CRuledOut::joinAddr(param.port);
+        let mut socket = match UdpSocket::bind(addr) {
+            Ok(socket) => socket,
+            Err(_) => return Err("socket bind error")
+        };
+        for i in 0..param.threadMax {
+            if param.sharedMode == consts::run::storage_mode_redis {
+                if param.transmitServiceFindMode == consts::run::transmit_service_find_mode_config {
+                    let sh = match shared::redis::CRedis::new(param.dial) {
+                        Ok(sh) => sh,
+                        Err(_) => return Err("create shared error")
+                    };
+                    let ruleOut = CRuledOut{
+                        sharedStorage: Box::new(sh),
+                        natCheck: Box::new(nat::simple::CSimple{}),
+                        transmitServiceFinder: Box::new(transmit::config_finder::CConfigFinder::new())
+                    };
+                    let nat4IsTryMake = param.nat4IsTryMake;
+                    thread::spawn(move || {
+                        ruleOut.listen(socket.try_clone().unwrap(), nat4IsTryMake);
+                    });
+                }
             }
+            return Err("shared mode is not found");
         }
-        return Err(String::from("shared mode is not found"));
+        Ok(())
     }
 }
