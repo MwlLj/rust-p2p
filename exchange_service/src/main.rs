@@ -33,7 +33,7 @@ fn main() {
         transmitServiceFindMode: &consts::run::transmit_service_find_mode_config,
         dial: &redisDial,
         port: port,
-        nat4IsTryMake: true,
+        nat4IsTryMake: false,
         threadMax: 10
     });
 
