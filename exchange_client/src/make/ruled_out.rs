@@ -4,7 +4,7 @@ use crate::decode;
 use crate::encode;
 use crate::consts;
 
-use std::net::{UdpSocket, SocketAddr, TcpStream};
+use std::net::{UdpSocket, SocketAddr, TcpListener, TcpStream};
 use std::time;
 use std::thread;
 
@@ -24,7 +24,10 @@ impl CRuledOut {
         // send info to server1
         let resVec = match self.syncSendToNode(socket.try_clone().unwrap(), &consts::proto::request_type_connect, "", &param, &param.server1Net) {
             Ok(v) => v,
-            Err(_) => return Err("send to server1 error")
+            Err(err) => {
+                println!("err: {}", err);
+                return Err("send to server1 error");
+            }
         };
         let checkRes = match decode::connect::decodeCheckResponse(resVec.as_slice()) {
             Ok(res) => res,
@@ -43,7 +46,9 @@ impl CRuledOut {
         let isSuccess = self.tryMakeHole(socket.try_clone().unwrap(), &peerNetRes, &param);
         if isSuccess {
             // return peer net info -> peer communicate
+            println!("make success");
         } else {
+            println!("make failed");
         }
         Ok(())
     }
@@ -51,6 +56,8 @@ impl CRuledOut {
 
 impl CRuledOut {
     fn tryMakeHole(&self, socket: UdpSocket, peer: &structs::req_res::CPeerNetResponse, param: &make::CMakeParam) -> bool {
+        println!("listen, ip: {}, port: {}", &param.selfNet.ip, &param.selfNet.port);
+        let listen = TcpListener::bind(CRuledOut::joinAddr(&param.selfNet));
         for i in 0..10 {
             self.sendToNode(socket.try_clone().unwrap(), "".as_bytes(), &structs::net::CNet{
                 ip: peer.peerIp.clone(),
@@ -62,10 +69,11 @@ impl CRuledOut {
             return false;
         };
         // build tcp connect
-        if let Err(_) = TcpStream::connect(CRuledOut::joinAddr(&structs::net::CNet{
+        println!("connect peer: ip: {}, port: {}", &peer.peerIp, &peer.peerPort);
+        if let Err(_) = TcpStream::connect_timeout(&CRuledOut::toSocketAddr(&structs::net::CNet{
             ip: peer.peerIp.clone(),
             port: peer.peerPort.clone()
-        })) {
+        }), time::Duration::from_secs(3)) {
             return false;
         }
         true
@@ -80,12 +88,16 @@ impl CRuledOut {
             lanPort: param.selfNet.port.clone()
         });
         if let Err(_) = self.sendToNode(socket.try_clone().unwrap(), reqEncode.as_bytes(), dstNet) {
-            return Err("send to server1 error");
+            return Err("send to node error");
         }
+        socket.connect(CRuledOut::joinAddr(dstNet));
         let mut buf = [0; 128];
         let (length, src) = match socket.recv_from(&mut buf) {
             Ok((l, s)) => (l, s),
-            Err(_) => return Err("recv error")
+            Err(err) => {
+                println!("err: {}", err);
+                return Err("recv error");
+            }
         };
         Ok(buf[..length].to_vec())
     }
@@ -105,6 +117,10 @@ impl CRuledOut {
         s.push_str(":");
         s.push_str(&addr.port);
         s
+    }
+
+    fn toSocketAddr(addr: &structs::net::CNet) -> SocketAddr {
+        SocketAddr::new(addr.ip.parse().unwrap(), addr.port.parse().unwrap())
     }
 }
 

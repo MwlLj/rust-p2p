@@ -14,6 +14,7 @@ pub fn decodeCheckResponse(buf: &[u8]) -> Result<structs::req_res::CCheckRespons
 
 pub fn decodePeerNetResponse(buf: &[u8]) -> Result<structs::req_res::CPeerNetResponse, &str> {
     let mut res: structs::req_res::CPeerNetResponse = structs::req_res::CPeerNetResponse::default();
+    println!("recv buf: {:?}", String::from_utf8(buf.to_vec()));
     rust_parse::string::u8_parse::u8ArrSplit(buf, '|' as u8, &mut |index: &u8, field: &str| {
         if *index == 0 {
             res.peerIp = field.to_string();
