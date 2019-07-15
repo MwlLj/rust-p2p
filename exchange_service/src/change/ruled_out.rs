@@ -53,6 +53,7 @@ impl CRuledOut {
     }
 
     fn handleTryMakeFinish(&self, socket: UdpSocket, src: SocketAddr, request: structs::req_res::CRequest) -> Result<(), &str> {
+        println!("handleTryMakeFinish");
         let mut tryCommunicateUuid = "try-".to_string();
         tryCommunicateUuid.push_str(&request.communicateUuid);
         let node = shared::CNode{
@@ -80,8 +81,10 @@ impl CRuledOut {
     }
 
     fn handleConnect(&self, socket: UdpSocket, src: SocketAddr, request: structs::req_res::CRequest, nat4IsTryMake: bool) -> Result<(), std::io::Error> {
+        println!("handleConnect");
         let selfUuid = request.getSelfUuid();
         if selfUuid == "" {
+            println!("selfUuid is empty -> add to shared");
             // first -> assign uuid
             let uid = uuid::Uuid::new_v4().to_string();
             let mut response = structs::req_res::CCheckResponse::default();
@@ -110,6 +113,7 @@ impl CRuledOut {
                 3. delete selfUuid from shared
                 4. add communicate uuid to shared
             */
+            println!("selfUuid is {}", &selfUuid);
             // get node info
             let firstConnectInfo = match self.sharedStorage.selfExist(selfUuid) {
                 Some(info) => info,
@@ -140,6 +144,7 @@ impl CRuledOut {
                 natType: natType
             };
             if let Some(peerInfo) = self.sharedStorage.peerExist(&request.communicateUuid) {
+                println!("peer exist, communicate uuid: {}", &request.communicateUuid);
                 // check
                 let isCommunicate = router::peer::CPeer::peerCheck(&peerInfo, &node);
                 /*
@@ -149,6 +154,7 @@ impl CRuledOut {
                     is make hole success, client judge
                 */
                 if !nat4IsTryMake && !isCommunicate {
+                    println!("middle ...");
                     // nat4 wantn't try make hole
                     // middle transmit
                     let middleAddr = self.transmitServiceFinder.transmitService();
@@ -163,20 +169,26 @@ impl CRuledOut {
                     // send to peer2
                     self.sendToNode(socket.try_clone().unwrap(), middleEncode.as_bytes(), &node.wanNet);
                 } else {
+                    println!("make hole");
                     // make hole
                     let mut peer1 = structs::req_res::CPeerNetResponse::default();
                     let mut peer2 = structs::req_res::CPeerNetResponse::default();
-                    router::peer::CPeer::peerChange(isCommunicate, &peerInfo, &mut peer1, &node, &mut peer2);
+                    router::peer::CPeer::peerChange(isCommunicate, &peerInfo, &mut peer2, &node, &mut peer1);
                     let peer1Encode = encode::check::encodePeerNetResponse(&peer1);
                     let peer2Encode = encode::check::encodePeerNetResponse(&peer2);
+                    println!("peer1 encode: {}", &peer1Encode);
+                    println!("peer2 encode: {}", &peer2Encode);
                     // send to peer1
                     self.sendToNode(socket.try_clone().unwrap(), peer2Encode.as_bytes(), &peerInfo.wanNet);
+                    println!("send {} to ip: {}, port: {}", &peer2Encode, &peerInfo.wanNet.ip, &peerInfo.wanNet.port);
                     // send to peer2
                     self.sendToNode(socket.try_clone().unwrap(), peer1Encode.as_bytes(), &node.wanNet);
+                    println!("send {} to ip: {}, port: {}", &peer1Encode, &node.wanNet.ip, &node.wanNet.port);
                 }
                 // delete communicate
                 self.sharedStorage.delNode(&request.communicateUuid);
             } else {
+                println!("peer not exist, communicate uuid: {} -> add communicate uuid to shared", &request.communicateUuid);
                 // add
                 // add communicateUuid
                 self.sharedStorage.addPeer(&request.communicateUuid, node, 60000);
@@ -186,6 +198,7 @@ impl CRuledOut {
     }
 
     fn handleMakeFailed(&self, socket: UdpSocket, src: SocketAddr, request: structs::req_res::CRequest) -> Result<(), std::io::Error> {
+        println!("handleMakeFailed");
         // middle transmit
         let middleAddr = self.transmitServiceFinder.transmitService();
         let middle = structs::req_res::CPeerNetResponse{
@@ -225,7 +238,7 @@ impl CRuledOut {
 
 impl CRuledOut {
     // fn new(sharedMode: &str, transmitServiceFindMode: &str, dial: &str) -> Result<CRuledOut, String> {
-    fn new<'a>(param: &change::CCreateParam) -> Result<(), &'a str> {
+    pub fn new<'a>(param: &change::CCreateParam) -> Result<(), &'a str> {
         let addr = CRuledOut::joinAddr(param.port);
         let mut socket = match UdpSocket::bind(addr) {
             Ok(socket) => socket,

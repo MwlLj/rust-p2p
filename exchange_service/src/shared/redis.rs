@@ -95,7 +95,9 @@ impl shared::IShared for CRedis {
 
 impl CRedis {
     pub fn new(addr: &str) -> Result<CRedis, &str> {
-        let client = match Client::open(addr) {
+        let mut connAddr = String::from("redis://");
+        connAddr.push_str(addr);
+        let client = match Client::open(connAddr.as_str()) {
             Ok(client) => client,
             Err(err) => {
                 println!("err: {}", err);
