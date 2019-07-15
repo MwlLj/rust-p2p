@@ -7,7 +7,7 @@ pub struct CConfigFinder {
 
 impl transmit::IFinder for CConfigFinder {
     fn transmitService(&self) -> SocketAddr {
-        SocketAddr::new("127.0.0.1".parse().unwrap(), "21010".parse().unwrap())
+        SocketAddr::new("119.3.72.228".parse().unwrap(), "31001".parse().unwrap())
     }
 }
 
