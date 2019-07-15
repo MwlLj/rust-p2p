@@ -29,7 +29,7 @@ impl CPeer {
             1. node1 wanIp == node2 wanIp -> may be in the lan -> change theirs lan net info
             2. other -> change theirs wan net info
         */
-        if isMakeHole && node1.wanNet.ip.contains(&node2.wanNet.ip) {
+        if node1.wanNet.ip.contains(&node2.wanNet.ip) {
             peer1.portInterval = 0;
             peer1.peerIp = node2.lanNet.ip.clone();
             peer1.peerPort = node2.lanNet.port.clone();
