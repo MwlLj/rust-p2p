@@ -13,11 +13,11 @@ impl CPeer {
     */
     pub fn peerCheck(peer1: &shared::CNode, peer2: &shared::CNode) -> bool {
         /*
-            1. node1 wanIp == node2 wanIp -> may be in the lan
+            1. peer1 wanIp == peer2 wanIp -> may be in the lan
             2. peer1 natType == Nat4 && peer2 natType == Nat4 -> false
             3. (peer1 natType == Nat3 && peer2 natType == Nat4) || (peer1 natType == Nat4 && peer2 natType == Nat3) -> false
         */
-        if node1.wanNet.ip.contains(&node2.wanNet.ip) {
+        if peer1.wanNet.ip.contains(&peer2.wanNet.ip) {
             return true;
         }
         if (peer1.natType == enums::nat::Nat::Nat4 && peer2.natType == enums::nat::Nat::Nat4)
