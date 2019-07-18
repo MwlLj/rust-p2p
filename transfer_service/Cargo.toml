@@ -1,0 +1,21 @@
+[package]
+name = "transfer_service"
+version = "0.1.0"
+authors = ["MwlLj <731025894@qq.com>"]
+edition = "2018"
+
+[dependencies]
+uuid = { version = "0.7", default-features = false, features = ["serde", "v4"] }
+net2 = "*"
+
+[dependencies.rust_parse]
+git = "https://github.com/MwlLj/rust_parse"
+version = "0.1.2"
+
+[dependencies.number_conv]
+git = "https://github.com/MwlLj/rust-math"
+version = "0.1.2"
+
+[dependencies.pointer]
+git = "https://github.com/MwlLj/rust-libs"
+version = "*"

@@ -1,0 +1,298 @@
+use crate::transfer;
+use crate::consts;
+use crate::shared;
+use crate::structs::{request, response};
+use crate::encode;
+
+use uuid::Uuid;
+use net2::{TcpBuilder};
+use rust_parse::stream::tcp_block;
+use number_conv::array::u8arr;
+use pointer::convert::box_u64;
+
+use std::net::{TcpListener, TcpStream};
+use std::thread;
+use std::cell::RefCell;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::io::prelude::*;
+use std::io::BufWriter;
+
+struct CSimple {
+    serverUuid: String,
+    nodeStorage: Arc<Mutex<shared::node::redis::CRedis>>,
+    serverStorage: Arc<Mutex<shared::server::redis::CRedis>>
+}
+
+impl CSimple {
+    fn handleRequest(&self, stream: TcpStream) -> Result<(), &str> {
+        let nodeStorage = self.nodeStorage.clone();
+        let serverStorage = self.serverStorage.clone();
+        let serverUuid = self.serverUuid.clone();
+        thread::spawn(move || {
+            let mut req = request::CRequest::default();
+            loop {
+                let s = match stream.try_clone() {
+                    Ok(s) => s,
+                    Err(err) => {
+                        println!("stream clone error");
+                        break;
+                    }
+                };
+                let mut block = tcp_block::CStreamBlockParse::new(s);
+                block.lines(1, &mut req, &mut |index: u64, data: Vec<u8>, request: &mut request::CRequest| -> (bool, u64) {
+                    decode_request!(index, data, request);
+                }, &mut |request: &mut request::CRequest| -> bool {
+                    let mut result: bool = true;
+                    loop {
+                        let s = match stream.try_clone() {
+                            Ok(s) => s,
+                            Err(err) => {
+                                println!("stream clone error");
+                                result = false;
+                                break;
+                            }
+                        };
+                        if request.requestMode == consts::proto::request_mode_connect {
+                            // handleConnect
+                            if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid) {
+                                println!("handle connect error, error: {}", err);
+                                result = false;
+                                break;
+                            }
+                        } else if request.requestMode == consts::proto::request_mode_transfer {
+                            // handleData
+                            if let Err(err) = CSimple::handleTransfer(&serverUuid, serverStorage.clone(), nodeStorage.clone(), s, request) {
+                                print!("handle transfer error, err: {}", err);
+                                result = false;
+                                break;
+                            }
+                            break;
+                        }
+                        break;
+                    }
+                    if result == false {
+                        // to do: send error response
+                        return false;
+                    } else {
+                        return true;
+                    }
+                });
+                break;
+            }
+            /*
+            disconnect:
+                1. delete from shared
+            */
+            let nodeStorage = match nodeStorage.lock() {
+                Ok(s) => s,
+                Err(err) => {
+                    return;
+                }
+            };
+            nodeStorage.delNode(&req.selfCommunicateUuid);
+        });
+        Ok(())
+    }
+
+    fn handleConnect<'a>(storage: Arc<Mutex<shared::node::redis::CRedis>>, stream: TcpStream, selfCommunicateUuid: &'a str) -> Result<(), &'a str> {
+        /*
+        1. add socket info to shared
+        */
+        let storage = match storage.lock() {
+            Ok(s) => s,
+            Err(err) => {
+                println!("storage lock error");
+                return Err("storage lock error");
+            }
+        };
+        let addr = box_u64::box2u64(Box::new(stream));
+        if let Err(err) = storage.addCommunicateNode(selfCommunicateUuid, &shared::node::CCommunicateNode{
+            streamAddr: addr
+        }) {
+            println!("addCommunicateNode error to shared erorr, {}", err);
+            return Err("addCommunicateNode to shared error");
+        };
+        Ok(())
+    }
+
+    fn handleTransfer<'a>(serverUuid: &'a str, serverStorage: Arc<Mutex<shared::server::redis::CRedis>>, nodeStorage: Arc<Mutex<shared::node::redis::CRedis>>, stream: TcpStream, request: &'a mut request::CRequest) -> Result<(), &'a str> {
+        /*
+        1. serverUuid is self
+            yes -> find socket, then transfer
+            no -> find server info, then transfer this server
+        */
+        let nodeStorage = match nodeStorage.lock() {
+            Ok(s) => s,
+            Err(err) => {
+                println!("node storage lock error");
+                return Err("node storage lock error");
+            }
+        };
+        if request.serverUuid == serverUuid {
+            let node = match nodeStorage.communicateNode(&request.peerCommunicateUuid) {
+                Some(node) => node,
+                None => {
+                    // response error
+                    println!("peer is not exist");
+                    return Err("peer is not exist");
+                }
+            };
+            // let addr = box_u64::u642box();
+            let peerStream = box_u64::u642box::<TcpStream>(node.streamAddr);
+            CSimple::sendToPeer(*peerStream, request);
+        } else {
+        }
+        Ok(())
+    }
+
+    fn sendToPeer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
+        let mut writer = BufWriter::new(&stream);
+        let buf = encode::data::encodeRequest2Data(request);
+        if let Err(err) = writer.write_all(&buf) {
+            return Err("write all error");
+        };
+        if let Err(err) = writer.flush() {
+            return Err("flush error");
+        };
+        Ok(())
+    }
+
+    fn handleListen(&self, listener: TcpListener) -> Result<(), &str> {
+        for stream in listener.incoming() {
+            let stream = match stream {
+                Ok(s) => s,
+                Err(err) => {
+                    println!("listen connect error, err: {}", err);
+                    return Err("listen connect error");
+                }
+            };
+            let stream = match stream.try_clone() {
+                Ok(s) => s,
+                Err(err) => {
+                    println!("stream clone error, err: {}", err);
+                    return Err("stream clone error");
+                }
+            };
+            if let Err(err) = self.handleRequest(stream) {
+                continue;
+            }
+        }
+        Ok(())
+    }
+
+    fn portReuselisten(&self, port: u32) -> Result<(), &str> {
+        // port reuse
+        let tcpBuilder = match TcpBuilder::new_v4() {
+            Ok(builder) => builder,
+            Err(err) => {
+                println!("create builder err: {}", err);
+                return Err("create builder error");
+            }
+        };
+        // reuse
+        if let Err(err) = tcpBuilder.reuse_address(true) {
+            println!("reuse address err: {}", err);
+            return Err("reuse address error");
+        };
+        let mut addr = "0.0.0.0:".to_string();
+        addr.push_str(&port.to_string());
+        // bind
+        if let Err(err) = tcpBuilder.bind(&addr) {
+            println!("bind err: {}", err);
+            return Err("bind error");
+        };
+        let listener = match tcpBuilder.listen(10) {
+            Ok(li) => li,
+            Err(err) => {
+                println!("listen error: {}", err);
+                return Err("listen error");
+            }
+        };
+        if let Err(err) = self.handleListen(listener) {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+pub struct CServer {
+    serverUuid: String,
+    serverStorage: Arc<Mutex<shared::server::redis::CRedis>>
+}
+
+impl CServer {
+    pub fn new() -> CServer {
+        let serverStorage = shared::server::redis::CRedis{};
+        let mut serverUuid = uuid::Uuid::new_v4().to_string();
+        CServer{
+            serverUuid: serverUuid,
+            serverStorage: Arc::new(Mutex::new(serverStorage))
+        }
+    }
+
+    pub fn start(&self, param: &transfer::CCreateParam) -> Result<(), &str> {
+        loop {
+            let serverStorage = self.serverStorage.lock().unwrap();
+            let server = match serverStorage.server(&self.serverUuid) {
+                Some(s) => s,
+                None => {
+                    if let Err(err) = serverStorage.addServer(&self.serverUuid, &shared::server::CServerInfo{
+                        net: shared::server::CNet{
+                            ip: param.listenIp.to_string(),
+                            port: param.listenPort
+                        }
+                    }) {
+                        return Err("addServer error");
+                    }
+                    break;
+                }
+            };
+            break;
+        }
+        let mut addr = param.listenIp.to_string();
+        addr.push_str(":");
+        addr.push_str(&param.listenPort.to_string());
+        // bind
+        let listener = match TcpListener::bind(&addr) {
+            Ok(l) => l,
+            Err(err) => {
+                println!("bind err: {}", err);
+                return Err("bind error");
+            }
+        };
+        let nodeStorage = Arc::new(Mutex::new(shared::node::redis::CRedis{}));
+        // let serverStorage = self.serverStorage.clone();
+        for i in 0..param.threadMax {
+            let nodeStorage = nodeStorage.clone();
+            let serverStorage = self.serverStorage.clone();
+            let listen = listener.try_clone().unwrap();
+            let serverUuid = self.serverUuid.clone();
+            thread::spawn(move || {
+                let obj = CSimple{
+                    serverUuid: serverUuid.clone(),
+                    nodeStorage: nodeStorage,
+                    serverStorage: serverStorage
+                };
+                obj.handleListen(listen);
+            });
+        }
+        Ok(())
+    }
+}
+
+impl Drop for CServer {
+    fn drop(&mut self) {
+        let storage = match self.serverStorage.lock() {
+            Ok(s) => {
+                println!("drop ok");
+                s
+            },
+            Err(err) => {
+                println!("err: {}", err);
+                return;
+            }
+        };
+        storage.delServer(&self.serverUuid);
+    }
+}
