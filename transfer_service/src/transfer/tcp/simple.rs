@@ -50,40 +50,47 @@ impl CSimple {
                 block.lines(1, &mut req, &mut |index: u64, data: Vec<u8>, request: &mut request::CRequest| -> (bool, u64) {
                     decode_request!(index, data, request);
                 }, &mut |request: &mut request::CRequest| -> bool {
-                    let mut result: bool = true;
+                    let mut result: i32 = 0;
                     loop {
                         let s = match stream.try_clone() {
                             Ok(s) => s,
                             Err(err) => {
                                 println!("stream clone error");
-                                result = false;
-                                break;
+                                return false;
                             }
                         };
                         if request.requestMode == consts::proto::request_mode_connect {
                             // handleConnect
                             if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid) {
                                 println!("handle connect error, error: {}", err);
-                                result = false;
+                                result = 1;
                                 break;
                             }
                         } else if request.requestMode == consts::proto::request_mode_transfer {
                             // handleData
                             if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, request) {
                                 print!("handle transfer error, err: {}", err);
-                                result = false;
+                                result = 1;
                                 break;
                             }
-                            break;
                         }
                         break;
                     }
-                    if result == false {
-                        // to do: send error response
+                    let s = match stream.try_clone() {
+                        Ok(s) => s,
+                        Err(err) => {
+                            println!("stream clone error");
+                            return false;
+                        }
+                    };
+                    if let Err(err) = CSimple::sendResponse(s, &mut response::CResponse{
+                        serverUuid: serverUuid.to_string(),
+                        result: result
+                    }) {
+                        println!("send response error");
                         return false;
-                    } else {
-                        return true;
-                    }
+                    };
+                    return true;
                 });
                 break;
             }
@@ -219,6 +226,18 @@ impl CSimple {
     fn sendToPeer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
         let mut writer = BufWriter::new(&stream);
         let buf = encode::request::data::encodeRequest2Data(request);
+        if let Err(err) = writer.write_all(&buf) {
+            return Err("write all error");
+        };
+        if let Err(err) = writer.flush() {
+            return Err("flush error");
+        };
+        Ok(())
+    }
+
+    fn sendResponse<'a>(stream: TcpStream, response: &mut response::CResponse) -> Result<(), &'a str> {
+        let mut writer = BufWriter::new(&stream);
+        let buf = encode::response::res::encodeResponse(response);
         if let Err(err) = writer.write_all(&buf) {
             return Err("write all error");
         };

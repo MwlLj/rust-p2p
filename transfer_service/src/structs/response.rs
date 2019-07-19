@@ -1,5 +1,5 @@
 #[derive(Default)]
 pub struct CResponse {
-    serverUuid: String,
-    result: i32
+    pub serverUuid: String,
+    pub result: i32
 }
