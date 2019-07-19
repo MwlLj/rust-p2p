@@ -1,6 +1,6 @@
 #[derive(Default)]
 pub struct CCommunicateNode {
-    pub streamAddr: u64
+    pub streamFd: u64
 }
 
 pub mod redis;

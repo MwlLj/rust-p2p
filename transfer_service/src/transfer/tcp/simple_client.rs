@@ -1,5 +1,7 @@
 use crate::shared;
 
+use socket::fd::tcp;
+
 use std::collections::HashMap;
 use std::net::TcpStream;
 
@@ -8,7 +10,7 @@ pub struct CClient {
 }
 
 impl CClient {
-    pub fn connect(&self, serverUuid: &str, serverNet: &shared::server::CNet) -> Option<TcpStream> {
+    pub fn findStream(&self, serverUuid: &str) -> Option<u64> {
         let server = match self.serverNets.get(serverUuid) {
             Some(s) => {
                 let stream = match s.try_clone() {
@@ -18,24 +20,38 @@ impl CClient {
                         return None;
                     }
                 };
-                return Some(stream);
+                let addr = tcp::stream2fd(stream);
+                return Some(addr);
             },
             None => {
-                let stream = match self.serverConnect() {
-                    Ok(s) => s,
-                    Err(err) => {
-                        println!("err: {}", err);
-                        return None;
-                    }
-                };
-                return Some(stream);
+                return None;
             }
         };
         None
     }
 
-    fn serverConnect(&self) -> Result<TcpStream, &str> {
-        Err("not impl")
+    pub fn addServer(&mut self, serverUuid: &str, stream: TcpStream) {
+        self.serverNets.insert(serverUuid.to_string(), stream);
+    }
+
+    pub fn serverConnect(serverNet: &shared::server::CNet) -> Result<TcpStream, &str> {
+        let addr = CClient::joinAddr(serverNet);
+        let stream = match TcpStream::connect(addr.as_str()) {
+            Ok(s) => s,
+            Err(err) => {
+                println!("connect error, err: {}", err);
+                return Err("connect server error");
+            }
+        };
+        Ok(stream)
+    }
+
+    fn joinAddr(net: &shared::server::CNet) -> String {
+        let mut addr = String::new();
+        addr.push_str(&net.ip);
+        addr.push_str(":");
+        addr.push_str(&net.port.to_string());
+        addr
     }
 }
 

@@ -31,10 +31,9 @@ fn main() {
         }
     };
 
-    let server = transfer::tcp::simple::CServer::new();
+    let server = transfer::tcp::simple::CServer::new("localhost:6379").unwrap();
     server.start(&transfer::CCreateParam{
         nodeStorageDial: "localhost:6379".to_string(),
-        serverStorageDial: "localhost:6379".to_string(),
         listenIp: "127.0.0.1".to_string(),
         listenPort: port,
         threadMax: threadMax

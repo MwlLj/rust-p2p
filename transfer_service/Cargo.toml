@@ -19,3 +19,10 @@ version = "0.1.2"
 [dependencies.pointer]
 git = "https://github.com/MwlLj/rust-libs"
 version = "*"
+
+[dependencies.socket]
+git = "https://github.com/MwlLj/rust-libs"
+version = "*"
+
+[dependencies.redis]
+version = "*"
