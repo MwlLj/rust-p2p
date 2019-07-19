@@ -50,7 +50,7 @@ impl CSimple {
                 block.lines(1, &mut req, &mut |index: u64, data: Vec<u8>, request: &mut request::CRequest| -> (bool, u64) {
                     decode_request!(index, data, request);
                 }, &mut |request: &mut request::CRequest| -> bool {
-                    let mut result: i32 = 0;
+                    let mut result: u8 = 0;
                     loop {
                         let s = match stream.try_clone() {
                             Ok(s) => s,
@@ -83,7 +83,7 @@ impl CSimple {
                             return false;
                         }
                     };
-                    if let Err(err) = CSimple::sendResponse(s, &mut response::CResponse{
+                    if let Err(err) = CSimple::sendResponse(s, &mut response::CAck{
                         serverUuid: serverUuid.to_string(),
                         result: result
                     }) {
@@ -225,7 +225,7 @@ impl CSimple {
 
     fn sendToPeer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
         let mut writer = BufWriter::new(&stream);
-        let buf = encode::request::data::encodeRequest2Data(request);
+        let buf = encode::response::res::encodeTransfer(request);
         if let Err(err) = writer.write_all(&buf) {
             return Err("write all error");
         };
@@ -235,9 +235,9 @@ impl CSimple {
         Ok(())
     }
 
-    fn sendResponse<'a>(stream: TcpStream, response: &mut response::CResponse) -> Result<(), &'a str> {
+    fn sendResponse<'a>(stream: TcpStream, response: &mut response::CAck) -> Result<(), &'a str> {
         let mut writer = BufWriter::new(&stream);
-        let buf = encode::response::res::encodeResponse(response);
+        let buf = encode::response::res::encodeAck(response);
         if let Err(err) = writer.write_all(&buf) {
             return Err("write all error");
         };

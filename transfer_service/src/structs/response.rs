@@ -1,8 +1,23 @@
+/*
+full response:
+    responseMode
+    serverUuid
+    result
+    selfCommunicateUuid
+    peerCommunicateUuid
+    packageIndex
+    packageTotal
+    data
+*/
+
 #[derive(Default)]
-pub struct CResponse {
-    pub responseMode: String,
+pub struct CAck {
     pub serverUuid: String,
-    pub result: u8,
+    pub result: u8
+}
+
+#[derive(Default)]
+pub struct CTransfer {
     pub selfCommunicateUuid: String,
     pub peerCommunicateUuid: String,
     pub packageIndex: u64,
