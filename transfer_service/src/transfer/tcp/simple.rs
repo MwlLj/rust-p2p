@@ -3,6 +3,7 @@ use crate::consts;
 use crate::shared;
 use crate::structs::{request, response};
 use crate::encode;
+use crate::decode;
 
 use uuid::Uuid;
 use net2::{TcpBuilder};
@@ -217,7 +218,7 @@ impl CSimple {
 
     fn sendToPeer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
         let mut writer = BufWriter::new(&stream);
-        let buf = encode::data::encodeRequest2Data(request);
+        let buf = encode::request::data::encodeRequest2Data(request);
         if let Err(err) = writer.write_all(&buf) {
             return Err("write all error");
         };

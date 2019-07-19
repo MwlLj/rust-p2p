@@ -5,6 +5,8 @@ use crate::encode;
 use redis;
 use redis::Client;
 
+const group_name: &str = "server:";
+
 pub struct CRedis {
     client: Client
 }
@@ -18,7 +20,7 @@ impl CRedis {
         let serverEncode = encode::shared::server::encodeServerInfo(&server);
         // let ttl = ttlMs / 1000;
         // .arg("ex").arg(&ttl.to_string());
-        if let Ok(()) = redis::cmd("set").arg(id).arg(&serverEncode).query(&mut conn) {
+        if let Ok(()) = redis::cmd("set").arg(&self.joinKey(id)).arg(&serverEncode).query(&mut conn) {
             Ok(())
         } else {
             Err("set error")
@@ -30,7 +32,7 @@ impl CRedis {
             Ok(conn) => conn,
             Err(_) => return Err("get connect error")
         };
-        if let Ok(()) = redis::cmd("del").arg(id).query(&mut conn) {
+        if let Ok(()) = redis::cmd("del").arg(&self.joinKey(id)).query(&mut conn) {
             Ok(())
         } else {
             Err("del error")
@@ -42,7 +44,7 @@ impl CRedis {
             Ok(conn) => conn,
             Err(_) => return None
         };
-        if let Ok(value) = redis::cmd("get").arg(id).query(&mut conn) {
+        if let Ok(value) = redis::cmd("get").arg(&self.joinKey(id)).query(&mut conn) {
             let va: Option<String> = value;
             let v = match va {
                 Some(v) => v,
@@ -56,6 +58,27 @@ impl CRedis {
         } else {
             None
         }
+    }
+
+    pub fn servers(&self) -> Option<Vec<String>> {
+        let mut conn = match self.client.get_connection() {
+            Ok(conn) => conn,
+            Err(_) => return None
+        };
+        if let Ok(value) = redis::cmd("keys").arg(group_name).query(&mut conn) {
+            value
+        } else {
+            None
+        }
+    }
+}
+
+impl CRedis {
+    fn joinKey(&self, id: &str) -> String {
+        let mut key = String::new();
+        key.push_str(group_name);
+        key.push_str(id);
+        key
     }
 }
 

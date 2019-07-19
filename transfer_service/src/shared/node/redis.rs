@@ -5,6 +5,8 @@ use crate::encode;
 use redis;
 use redis::Client;
 
+const group_name: &str = "node:";
+
 pub struct CRedis {
     client: Client
 }
@@ -15,7 +17,7 @@ impl CRedis {
             Ok(conn) => conn,
             Err(_) => return None
         };
-        if let Ok(value) = redis::cmd("get").arg(id).query(&mut conn) {
+        if let Ok(value) = redis::cmd("get").arg(&self.joinKey(id)).query(&mut conn) {
             let va: Option<String> = value;
             let v = match va {
                 Some(v) => v,
@@ -39,7 +41,7 @@ impl CRedis {
         let nodeEncode = encode::shared::node::encodeNodeSelf(&node);
         // let ttl = ttlMs / 1000;
         // .arg("ex").arg(&ttl.to_string());
-        if let Ok(()) = redis::cmd("set").arg(id).arg(&nodeEncode).query(&mut conn) {
+        if let Ok(()) = redis::cmd("set").arg(&self.joinKey(id)).arg(&nodeEncode).query(&mut conn) {
             Ok(())
         } else {
             Err("set error")
@@ -51,11 +53,20 @@ impl CRedis {
             Ok(conn) => conn,
             Err(_) => return Err("get connect error")
         };
-        if let Ok(()) = redis::cmd("del").arg(id).query(&mut conn) {
+        if let Ok(()) = redis::cmd("del").arg(&self.joinKey(id)).query(&mut conn) {
             Ok(())
         } else {
             Err("del error")
         }
+    }
+}
+
+impl CRedis {
+    fn joinKey(&self, id: &str) -> String {
+        let mut key = String::new();
+        key.push_str(group_name);
+        key.push_str(id);
+        key
     }
 }
 
