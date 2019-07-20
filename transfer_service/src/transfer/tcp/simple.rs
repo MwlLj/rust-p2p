@@ -61,7 +61,6 @@ impl CSimple {
                         };
                         if request.requestMode == consts::proto::request_mode_connect {
                             // handleConnect
-                            println!("handle connect");
                             if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid) {
                                 println!("handle connect error, error: {}", err);
                                 result = 1;
@@ -69,7 +68,6 @@ impl CSimple {
                             }
                         } else if request.requestMode == consts::proto::request_mode_data {
                             // handleDataTransfer
-                            println!("handle data");
                             if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, request) {
                                 print!("handle data transfer error, err: {}", err);
                                 result = 1;
@@ -166,6 +164,7 @@ impl CSimple {
                 streamFd = node.streamFd;
             }
             let peerStream = tcp::fd2stream(streamFd);
+            println!("self id: {}, peer socket fd: {}", &request.selfCommunicateUuid, streamFd);
             CSimple::sendToPeer(peerStream, request);
         } else {
             let mut serverInfo = shared::server::CServerInfo::default();
@@ -239,6 +238,7 @@ impl CSimple {
             buf = encode::response::res::encodeAckTransfer(request);
         } else if request.requestMode == consts::proto::response_mode_data {
             buf = encode::response::res::encodeDataTransfer(request);
+            println!("send to peer, mode: data, buf: {:?}", buf);
         } else {
             return Err("request mode is not support");
         }

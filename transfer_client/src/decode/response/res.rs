@@ -6,6 +6,7 @@ macro_rules! decode_response {
         if $index % 2 == 0 {
             let mut number: u64 = 0;
             u8arr::u8arrTou64($data.as_slice(), &mut number);
+            println!("{:?}", $data);
             return (true, number);
         }
         if $index == 1 {
@@ -59,7 +60,7 @@ macro_rules! decode_response {
         if $index == 19 {
             return (false, 0);
         }
-        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 8 || $index == 9 {
+        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 9 {
             return (true, 1);
         } else {
             return (true, 4);

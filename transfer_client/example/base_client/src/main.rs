@@ -17,12 +17,15 @@ fn main() {
     let peerUuid = cmdHandler.register("-peer", "654321");
     let objectUuid = cmdHandler.register("-obj", "123");
     let data = cmdHandler.register("-data", "hello");
+    cmdHandler.parse();
 
     let server = server.borrow().to_string();
     let selfUuid = selfUuid.borrow().to_string();
     let peerUuid = peerUuid.borrow().to_string();
     let objectUuid = objectUuid.borrow().to_string();
     let data = data.borrow().to_string();
+
+    println!("self: {}, peer: {}", selfUuid, peerUuid);
 
     let cli = match simple::CSimple::new(&(*server), |data: &response::CResponse, s: &simple::CSimple| -> bool {
         let mut file = OpenOptions::new().append(true).create(true).open("test.txt").expect("open file error");
@@ -46,7 +49,6 @@ fn main() {
         }
     };
     println!("serverUuid: {}", &serverUuid);
-    /*
     thread::spawn(move || {
         let cli = Arc::new(cli);
         loop {
@@ -57,7 +59,7 @@ fn main() {
                 serverUuid: serverUuid.clone(),
                 objectUuid: (*objectUuid).to_string(),
                 packageIndex: 0,
-                packageTotal: 1,
+                packageTotal: 0,
                 data: (*data).as_bytes().to_vec()
             }) {
                 println!("sendAsyn error, err: {}", err);
@@ -66,7 +68,6 @@ fn main() {
             thread::sleep(time::Duration::from_secs(1));
         }
     });
-    */
 
     // let mut cli = simple::CSimple::new("").unwrap();
     // <simple::CSimple as client::IClient>::dataRecv(&mut cli, move |_data: &response::CResponse| -> bool {

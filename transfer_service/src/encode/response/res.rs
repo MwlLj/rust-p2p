@@ -36,9 +36,13 @@ pub fn encodeDataTransfer(req: &mut request::CRequest) -> Vec<u8> {
     u8arr::u64AppendTou8arr(req.peerResult.len() as u64, 4, &mut buf);
     buf.append(&mut req.peerResult.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.packageIndex, 4, &mut buf);
-    buf.append(&mut req.packageIndex.to_string().as_bytes().to_vec());
+    if req.packageIndex > 0 {
+        buf.append(&mut req.packageIndex.to_string().as_bytes().to_vec());
+    }
     u8arr::u64AppendTou8arr(req.packageTotal, 4, &mut buf);
-    buf.append(&mut req.packageTotal.to_string().as_bytes().to_vec());
+    if req.packageTotal > 0 {
+        buf.append(&mut req.packageTotal.to_string().as_bytes().to_vec());
+    }
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
     buf

@@ -122,6 +122,7 @@ impl CSimple {
         block.lines(1, &mut res, &mut |index: u64, data: Vec<u8>, response: &mut response::CResponse| -> (bool, u64) {
             decode_response!(index, data, response);
         }, &mut |response: &mut response::CResponse| -> bool {
+            println!("response mode: {:?}", &response.responseMode);
             if response.responseMode == consts::proto::response_mode_ack {
                 simple.handleAck(response);
             } else if response.responseMode == consts::proto::response_mode_data {

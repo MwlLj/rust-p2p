@@ -4,10 +4,8 @@ macro_rules! decode_request {
         if $index % 2 == 0 {
             let mut number: u64 = 0;
             u8arr::u8arrTou64($data.as_slice(), &mut number);
-            println!("index: {}, number: {:?}", $index, number);
             return (true, number);
         }
-        println!("index: {}", $index);
         if $index == 1 {
             $request.requestMode = match String::from_utf8($data) {
                 Ok(s) => s,
@@ -48,7 +46,7 @@ macro_rules! decode_request {
         if $index == 17 {
             return (false, 0);
         }
-        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 9 {
+        if $index == 1 || $index == 3 || $index == 5 || $index == 7 {
             return (true, 1);
         } else {
             return (true, 4);
