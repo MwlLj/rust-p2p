@@ -4,8 +4,10 @@ macro_rules! decode_request {
         if $index % 2 == 0 {
             let mut number: u64 = 0;
             u8arr::u8arrTou64($data.as_slice(), &mut number);
+            println!("index: {}, number: {:?}", $index, number);
             return (true, number);
         }
+        println!("index: {}", $index);
         if $index == 1 {
             $request.requestMode = match String::from_utf8($data) {
                 Ok(s) => s,
@@ -27,16 +29,26 @@ macro_rules! decode_request {
                 Err(_) => "".to_string()
             };
         } else if $index == 9 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageIndex);
+            $request.objectUuid = match String::from_utf8($data) {
+                Ok(s) => s,
+                Err(_) => "".to_string()
+            };
         } else if $index == 11 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageTotal);
+            $request.peerResult = match String::from_utf8($data) {
+                Ok(s) => s,
+                Err(_) => "".to_string()
+            };
         } else if $index == 13 {
+            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageIndex);
+        } else if $index == 15 {
+            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageTotal);
+        } else if $index == 17 {
             $request.data = $data;
         }
-        if $index == 13 {
+        if $index == 17 {
             return (false, 0);
         }
-        if $index == 1 || $index == 3 || $index == 5 {
+        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 9 {
             return (true, 1);
         } else {
             return (true, 4);

@@ -61,15 +61,24 @@ impl CSimple {
                         };
                         if request.requestMode == consts::proto::request_mode_connect {
                             // handleConnect
+                            println!("handle connect");
                             if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid) {
                                 println!("handle connect error, error: {}", err);
                                 result = 1;
                                 break;
                             }
-                        } else if request.requestMode == consts::proto::request_mode_transfer {
-                            // handleData
+                        } else if request.requestMode == consts::proto::request_mode_data {
+                            // handleDataTransfer
+                            println!("handle data");
                             if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, request) {
-                                print!("handle transfer error, err: {}", err);
+                                print!("handle data transfer error, err: {}", err);
+                                result = 1;
+                                break;
+                            }
+                        } else if request.requestMode == consts::proto::request_mode_ack {
+                            // handleAckTransfer
+                            if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, request) {
+                                print!("handle ack transfer error, err: {}", err);
                                 result = 1;
                                 break;
                             }
@@ -225,7 +234,14 @@ impl CSimple {
 
     fn sendToPeer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
         let mut writer = BufWriter::new(&stream);
-        let buf = encode::response::res::encodeTransfer(request);
+        let mut buf: Vec<u8> = Vec::new();
+        if request.requestMode == consts::proto::response_mode_peer_ack {
+            buf = encode::response::res::encodeAckTransfer(request);
+        } else if request.requestMode == consts::proto::response_mode_data {
+            buf = encode::response::res::encodeDataTransfer(request);
+        } else {
+            return Err("request mode is not support");
+        }
         if let Err(err) = writer.write_all(&buf) {
             return Err("write all error");
         };

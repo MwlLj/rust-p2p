@@ -6,6 +6,8 @@ pub struct CRequest {
     pub selfCommunicateUuid: String,
     pub peerCommunicateUuid: String,
     pub serverUuid: String,
+    pub objectUuid: String,
+    pub peerResult: String,
     pub packageIndex: u64,
     pub packageTotal: u64,
     pub data: Vec<u8>
