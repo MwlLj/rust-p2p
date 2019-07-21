@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::io::BufWriter;
 use std::io::prelude::*;
+use std::mem;
 
 type NodeSharedStorage = shared::node::redis::CRedis;
 type ServerSharedStorage = shared::server::redis::CRedis;
@@ -165,7 +166,8 @@ impl CSimple {
             }
             let peerStream = tcp::fd2stream(streamFd);
             println!("self id: {}, peer socket fd: {}", &request.selfCommunicateUuid, streamFd);
-            CSimple::sendToPeer(peerStream, request);
+            CSimple::sendToPeer(peerStream.try_clone().unwrap(), request);
+            mem::forget(peerStream);
         } else {
             let mut serverInfo = shared::server::CServerInfo::default();
             {

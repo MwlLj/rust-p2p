@@ -250,7 +250,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "pointer"
 version = "0.1.0"
-source = "git+https://github.com/MwlLj/rust-libs#ab79753c5de8ebaad5050aaa14647c40ae07e2cc"
+source = "git+https://github.com/MwlLj/rust-libs#e516d84b8b719b1ee47db48bd729527e8f1460cc"
 
 [[package]]
 name = "rand"
@@ -425,8 +425,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "socket"
-version = "0.1.0"
-source = "git+https://github.com/MwlLj/rust-libs#ab79753c5de8ebaad5050aaa14647c40ae07e2cc"
+version = "0.1.1"
+source = "git+https://github.com/MwlLj/rust-libs#e516d84b8b719b1ee47db48bd729527e8f1460cc"
 
 [[package]]
 name = "stable_deref_trait"
@@ -511,7 +511,7 @@ dependencies = [
  "pointer 0.1.0 (git+https://github.com/MwlLj/rust-libs)",
  "redis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust_parse 0.1.2 (git+https://github.com/MwlLj/rust_parse)",
- "socket 0.1.0 (git+https://github.com/MwlLj/rust-libs)",
+ "socket 0.1.1 (git+https://github.com/MwlLj/rust-libs)",
  "uuid 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -657,7 +657,7 @@ dependencies = [
 "checksum sha1 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2579985fda508104f7587689507983eadd6a6e84dd35d6d115361f530916fa0d"
 "checksum slab 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 "checksum smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "ab606a9c5e214920bb66c458cd7be8ef094f813f20fe77a54cc7dbfff220d4b7"
-"checksum socket 0.1.0 (git+https://github.com/MwlLj/rust-libs)" = "<none>"
+"checksum socket 0.1.1 (git+https://github.com/MwlLj/rust-libs)" = "<none>"
 "checksum stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dba1a27d3efae4351c8051072d619e3ade2820635c3958d826bfea39d59b54c8"
 "checksum tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5c501eceaf96f0e1793cf26beb63da3d11c738c4a943fdf3746d81d64684c39f"
 "checksum tokio-executor 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "0f27ee0e6db01c5f0b2973824547ce7e637b2ed79b891a9677b0de9bd532b6ac"

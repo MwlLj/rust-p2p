@@ -22,7 +22,7 @@ version = "*"
 
 [dependencies.socket]
 git = "https://github.com/MwlLj/rust-libs"
-version = "*"
+version = "0.1.1"
 
 [dependencies.redis]
 version = "*"
