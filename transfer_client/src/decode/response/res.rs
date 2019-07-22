@@ -6,7 +6,6 @@ macro_rules! decode_response {
         if $index % 2 == 0 {
             let mut number: u64 = 0;
             u8arr::u8arrTou64($data.as_slice(), &mut number);
-            println!("{:?}", $data);
             return (true, number);
         }
         if $index == 1 {
@@ -20,16 +19,9 @@ macro_rules! decode_response {
                 Err(_) => "".to_string()
             };
         } else if $index == 5 {
-            $response.result = match String::from_utf8($data) {
-                Ok(s) => {
-                    if let Ok(n) = s.parse() {
-                        n
-                    } else {
-                        1
-                    }
-                },
-                Err(_) => 1
-            };
+            let mut result = 0;
+            u8arr::u8arrTou64($data.as_slice(), &mut result);
+            $response.result = result as u8;
         } else if $index == 7 {
             $response.selfCommunicateUuid = match String::from_utf8($data) {
                 Ok(s) => s,
@@ -60,7 +52,7 @@ macro_rules! decode_response {
         if $index == 19 {
             return (false, 0);
         }
-        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 9 {
+        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 9 || $index == 13 || $index == 15 {
             return (true, 1);
         } else {
             return (true, 4);

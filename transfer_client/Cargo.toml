@@ -12,4 +12,4 @@ version = "0.1.2"
 
 [dependencies.number_conv]
 git = "https://github.com/MwlLj/rust-math"
-version = "0.1.2"
+version = "0.1.7"
