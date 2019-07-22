@@ -46,7 +46,7 @@ macro_rules! decode_request {
         if $index == 17 {
             return (false, 0);
         }
-        if $index == 1 || $index == 3 || $index == 5 || $index == 7 {
+        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 11 || $index == 13 {
             return (true, 1);
         } else {
             return (true, 4);

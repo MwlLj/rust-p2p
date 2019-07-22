@@ -32,7 +32,7 @@ struct CSimple {
 }
 
 impl CSimple {
-    fn handleRequest(&self, stream: TcpStream) -> Result<(), &str> {
+    fn handleClient(&self, stream: TcpStream) -> Result<(), &str> {
         let nodeStorage = self.nodeStorage.clone();
         let serverStorage = self.serverStorage.clone();
         let serverUuid = self.serverUuid.clone();
@@ -50,54 +50,22 @@ impl CSimple {
                 let mut block = tcp_block::CStreamBlockParse::new(s);
                 block.lines(1, &mut req, &mut |index: u64, data: Vec<u8>, request: &mut request::CRequest| -> (bool, u64) {
                     decode_request!(index, data, request);
-                }, &mut |request: &mut request::CRequest| -> bool {
-                    let mut result: u8 = 0;
-                    loop {
-                        let s = match stream.try_clone() {
-                            Ok(s) => s,
-                            Err(err) => {
-                                println!("stream clone error");
-                                return false;
-                            }
-                        };
-                        if request.requestMode == consts::proto::request_mode_connect {
-                            // handleConnect
-                            if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid) {
-                                println!("handle connect error, error: {}", err);
-                                result = 1;
-                                break;
-                            }
-                        } else if request.requestMode == consts::proto::request_mode_data {
-                            // handleDataTransfer
-                            if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, request) {
-                                print!("handle data transfer error, err: {}", err);
-                                result = 1;
-                                break;
-                            }
-                        } else if request.requestMode == consts::proto::request_mode_ack {
-                            // handleAckTransfer
-                            if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, request) {
-                                print!("handle ack transfer error, err: {}", err);
-                                result = 1;
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                    let s = match stream.try_clone() {
+                }, &mut |req: &mut request::CRequest| -> bool {
+                    let stream = match stream.try_clone() {
                         Ok(s) => s,
                         Err(err) => {
                             println!("stream clone error");
                             return false;
                         }
                     };
-                    if let Err(err) = CSimple::sendResponse(s, &mut response::CAck{
-                        serverUuid: serverUuid.to_string(),
-                        result: result
-                    }) {
-                        println!("send response error");
-                        return false;
-                    };
+                    let nodeStorage = nodeStorage.clone();
+                    let serverStorage = serverStorage.clone();
+                    let serverUuid = serverUuid.clone();
+                    let client = client.clone();
+                    let mut request = req.clone();
+                    thread::spawn(move || {
+                        CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, client);
+                    });
                     return true;
                 });
                 break;
@@ -115,6 +83,60 @@ impl CSimple {
             nodeStorage.delNode(&req.selfCommunicateUuid);
         });
         Ok(())
+    }
+
+    fn handleRequest(mut request: request::CRequest, stream: TcpStream, nodeStorage: Arc<Mutex<NodeSharedStorage>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, serverUuid: String, client: Arc<Mutex<Client>>) {
+        let mut result: u8 = 0;
+        loop {
+            let s = match stream.try_clone() {
+                Ok(s) => s,
+                Err(err) => {
+                    println!("stream clone error");
+                    // return false;
+                    return;
+                }
+            };
+            if request.requestMode == consts::proto::request_mode_connect {
+                // handleConnect
+                if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid) {
+                    println!("handle connect error, error: {}", err);
+                    result = 1;
+                    break;
+                }
+            } else if request.requestMode == consts::proto::request_mode_data {
+                // handleDataTransfer
+                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
+                    print!("handle data transfer error, err: {}", err);
+                    result = 1;
+                    break;
+                }
+            } else if request.requestMode == consts::proto::request_mode_ack {
+                // handleAckTransfer
+                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
+                    print!("handle ack transfer error, err: {}", err);
+                    result = 1;
+                    break;
+                }
+            }
+            break;
+        }
+        let s = match stream.try_clone() {
+            Ok(s) => s,
+            Err(err) => {
+                println!("stream clone error");
+                // return false;
+                return;
+            }
+        };
+        if let Err(err) = CSimple::sendResponse(s, &mut response::CAck{
+            serverUuid: serverUuid.to_string(),
+            result: result
+        }) {
+            println!("send response error");
+            // return false;
+            return;
+        };
+        // return true;
     }
 
     fn handleConnect<'a>(storage: Arc<Mutex<NodeSharedStorage>>, stream: TcpStream, selfCommunicateUuid: &'a str) -> Result<(), &'a str> {
@@ -165,7 +187,6 @@ impl CSimple {
                 streamFd = node.streamFd;
             }
             let peerStream = tcp::fd2stream(streamFd);
-            println!("self id: {}, peer socket fd: {}", &request.selfCommunicateUuid, streamFd);
             CSimple::sendToPeer(peerStream.try_clone().unwrap(), request);
             mem::forget(peerStream);
         } else {
@@ -229,6 +250,7 @@ impl CSimple {
             }
             let peerStream = tcp::fd2stream(streamFd);
             CSimple::sendToPeer(peerStream, request);
+            mem::forget(peerStream);
         }
         Ok(())
     }
@@ -240,7 +262,6 @@ impl CSimple {
             buf = encode::response::res::encodeAckTransfer(request);
         } else if request.requestMode == consts::proto::response_mode_data {
             buf = encode::response::res::encodeDataTransfer(request);
-            println!("send to peer, mode: data, buf: {:?}", buf);
         } else {
             return Err("request mode is not support");
         }
@@ -281,7 +302,7 @@ impl CSimple {
                     return Err("stream clone error");
                 }
             };
-            if let Err(err) = self.handleRequest(stream) {
+            if let Err(err) = self.handleClient(stream) {
                 continue;
             }
         }

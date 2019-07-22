@@ -210,8 +210,8 @@ dependencies = [
 
 [[package]]
 name = "number_conv"
-version = "0.1.2"
-source = "git+https://github.com/MwlLj/rust-math#8410dd3c2eff95b32f498806bd88ebcda922965c"
+version = "0.1.7"
+source = "git+https://github.com/MwlLj/rust-math#bc96d443f2f3259e2fa4c4a68dff53b59f3005fd"
 
 [[package]]
 name = "owning_ref"
@@ -507,7 +507,7 @@ name = "transfer_service"
 version = "0.1.0"
 dependencies = [
  "net2 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "number_conv 0.1.2 (git+https://github.com/MwlLj/rust-math)",
+ "number_conv 0.1.7 (git+https://github.com/MwlLj/rust-math)",
  "pointer 0.1.0 (git+https://github.com/MwlLj/rust-libs)",
  "redis 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust_parse 0.1.2 (git+https://github.com/MwlLj/rust_parse)",
@@ -630,7 +630,7 @@ dependencies = [
 "checksum miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f2f3b1cf331de6896aabf6e9d55dca90356cc9960cca7eaaf408a355ae919"
 "checksum net2 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "42550d9fb7b6684a6d404d9fa7250c2eb2646df731d1c06afc06dcee9e1bcf88"
 "checksum num_cpus 1.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bcef43580c035376c0705c42792c294b66974abbfd2789b511784023f71f3273"
-"checksum number_conv 0.1.2 (git+https://github.com/MwlLj/rust-math)" = "<none>"
+"checksum number_conv 0.1.7 (git+https://github.com/MwlLj/rust-math)" = "<none>"
 "checksum owning_ref 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "49a4b8ea2179e6a2e27411d3bca09ca6dd630821cf6894c6c7c8467a8ee7ef13"
 "checksum parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ab41b4aed082705d1056416ae4468b6ea99d52599ecf3169b00088d43113e337"
 "checksum parking_lot_core 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "94c8c7923936b28d546dfd14d4472eaf34c99b14e1c973a32b3e6d4eb04298c9"

@@ -10,14 +10,13 @@ pub fn encodeAck(res: &mut response::CAck) -> Vec<u8> {
     buf.append(&mut proto::response_mode_ack.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(res.serverUuid.len() as u64, 1, &mut buf);
     buf.append(&mut res.serverUuid.as_bytes().to_vec());
-    u8arr::u64AppendTou8arr(1, 1, &mut buf);
-    buf.append(&mut res.result.to_string().as_bytes().to_vec());
+    u8arr::u8NumberAppendTou8arr(res.result as u64, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
-    u8arr::u64AppendTou8arr(0, 4, &mut buf);
-    u8arr::u64AppendTou8arr(0, 4, &mut buf);
+    u8arr::u64AppendTou8arr(0, 1, &mut buf);
+    u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
     buf
 }
@@ -37,14 +36,8 @@ pub fn encodeDataTransfer(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.objectUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerResult.len() as u64, 4, &mut buf);
     buf.append(&mut req.peerResult.as_bytes().to_vec());
-    u8arr::u64AppendTou8arr(req.packageIndex, 4, &mut buf);
-    if req.packageIndex > 0 {
-        buf.append(&mut req.packageIndex.to_string().as_bytes().to_vec());
-    }
-    u8arr::u64AppendTou8arr(req.packageTotal, 4, &mut buf);
-    if req.packageTotal > 0 {
-        buf.append(&mut req.packageTotal.to_string().as_bytes().to_vec());
-    }
+    u8arr::u32NumberAppendTou8arr(req.packageIndex, &mut buf);
+    u8arr::u32NumberAppendTou8arr(req.packageTotal, &mut buf);
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
     buf
@@ -65,8 +58,8 @@ pub fn encodeAckTransfer(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.objectUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerResult.len() as u64, 4, &mut buf);
     buf.append(&mut req.peerResult.as_bytes().to_vec());
-    u8arr::u64AppendTou8arr(0, 4, &mut buf);
-    u8arr::u64AppendTou8arr(0, 4, &mut buf);
+    u8arr::u64AppendTou8arr(0, 1, &mut buf);
+    u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
     buf
 }
