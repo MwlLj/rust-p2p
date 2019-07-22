@@ -10,8 +10,8 @@ dependencies = [
 
 [[package]]
 name = "number_conv"
-version = "0.1.2"
-source = "git+https://github.com/MwlLj/rust-math#8410dd3c2eff95b32f498806bd88ebcda922965c"
+version = "0.1.7"
+source = "git+https://github.com/MwlLj/rust-math#bc96d443f2f3259e2fa4c4a68dff53b59f3005fd"
 
 [[package]]
 name = "rust_parse"
@@ -22,10 +22,10 @@ source = "git+https://github.com/MwlLj/rust_parse#9f54b9999413ee21c463545f108008
 name = "transfer_client"
 version = "0.1.0"
 dependencies = [
- "number_conv 0.1.2 (git+https://github.com/MwlLj/rust-math)",
+ "number_conv 0.1.7 (git+https://github.com/MwlLj/rust-math)",
  "rust_parse 0.1.2 (git+https://github.com/MwlLj/rust_parse)",
 ]
 
 [metadata]
-"checksum number_conv 0.1.2 (git+https://github.com/MwlLj/rust-math)" = "<none>"
+"checksum number_conv 0.1.7 (git+https://github.com/MwlLj/rust-math)" = "<none>"
 "checksum rust_parse 0.1.2 (git+https://github.com/MwlLj/rust_parse)" = "<none>"

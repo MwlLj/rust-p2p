@@ -30,7 +30,7 @@ fn main() {
     let cli = match simple::CSimple::new(&(*server), |data: &response::CResponse, s: &simple::CSimple| -> bool {
         let mut file = OpenOptions::new().append(true).create(true).open("test.txt").expect("open file error");
         file.write_all(data.data.as_slice());
-        // println!("recv data: {}", String::from_utf8().unwrap());
+        // println!("recv data: {}", String::from_utf8(data.data).unwrap());
         return true;
     }) {
         Ok(cli) => cli,
