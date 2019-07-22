@@ -1,6 +1,6 @@
 use number_conv::array::u8arr;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct CRequest {
     pub requestMode: String,
     pub selfCommunicateUuid: String,

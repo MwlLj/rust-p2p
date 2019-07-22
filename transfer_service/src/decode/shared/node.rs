@@ -7,6 +7,8 @@ pub fn decodeNodeSelf(buf: &[u8]) -> Result<shared::node::CCommunicateNode, &str
     rust_parse::string::u8_parse::u8ArrSplit(buf, '|' as u8, &mut |index: &u8, field: &str| {
         if *index == 0 {
             node.streamFd = field.parse().expect("stream fd field parse error");
+        } else if *index == 1 {
+            node.serverUuid = field.to_string();
         }
     });
     Ok(node)

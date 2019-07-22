@@ -96,9 +96,10 @@ impl CSimple {
                     return;
                 }
             };
+            println!("{:?}", &request);
             if request.requestMode == consts::proto::request_mode_connect {
                 // handleConnect
-                if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid) {
+                if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid, &serverUuid) {
                     println!("handle connect error, error: {}", err);
                     result = 1;
                     break;
@@ -106,14 +107,14 @@ impl CSimple {
             } else if request.requestMode == consts::proto::request_mode_data {
                 // handleDataTransfer
                 if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
-                    print!("handle data transfer error, err: {}", err);
+                    println!("handle data transfer error, err: {}", err);
                     result = 1;
                     break;
                 }
             } else if request.requestMode == consts::proto::request_mode_ack {
                 // handleAckTransfer
                 if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
-                    print!("handle ack transfer error, err: {}", err);
+                    println!("handle ack transfer error, err: {}", err);
                     result = 1;
                     break;
                 }
@@ -139,7 +140,7 @@ impl CSimple {
         // return true;
     }
 
-    fn handleConnect<'a>(storage: Arc<Mutex<NodeSharedStorage>>, stream: TcpStream, selfCommunicateUuid: &'a str) -> Result<(), &'a str> {
+    fn handleConnect<'a>(storage: Arc<Mutex<NodeSharedStorage>>, stream: TcpStream, selfCommunicateUuid: &'a str, serverUuid: &'a str) -> Result<(), &'a str> {
         /*
         1. add socket info to shared
         */
@@ -152,7 +153,8 @@ impl CSimple {
         };
         let addr = tcp::stream2fd(stream);
         if let Err(err) = storage.addCommunicateNode(selfCommunicateUuid, &shared::node::CCommunicateNode{
-            streamFd: addr
+            streamFd: addr,
+            serverUuid: serverUuid.to_string()
         }) {
             println!("addCommunicateNode error to shared erorr, {}", err);
             return Err("addCommunicateNode to shared error");
@@ -166,7 +168,26 @@ impl CSimple {
             yes -> find socket, then transfer
             no -> find server info, then transfer this server
         */
-        if request.serverUuid == serverUuid {
+        let mut node = shared::node::CCommunicateNode::default();
+        {
+            let nodeStorage = match nodeStorage.lock() {
+                Ok(s) => s,
+                Err(err) => {
+                    println!("node storage lock error, err: {}", err);
+                    return Err("node storage lock error");
+                }
+            };
+            node = match nodeStorage.communicateNode(&request.peerCommunicateUuid) {
+                Some(node) => node,
+                None => {
+                    // response error
+                    println!("peer is not exist, peerUuid: {}", &request.peerCommunicateUuid);
+                    return Err("peer is not exist");
+                }
+            };
+        }
+        if node.serverUuid == serverUuid {
+            /*
             let mut streamFd: u64 = 0;
             {
                 let nodeStorage = match nodeStorage.lock() {
@@ -186,7 +207,8 @@ impl CSimple {
                 };
                 streamFd = node.streamFd;
             }
-            let peerStream = tcp::fd2stream(streamFd);
+            */
+            let peerStream = tcp::fd2stream(node.streamFd);
             CSimple::sendToPeer(peerStream.try_clone().unwrap(), request);
             mem::forget(peerStream);
         } else {
@@ -199,7 +221,7 @@ impl CSimple {
                         return Err("server storage lock error");
                     }
                 };
-                let info = match serverStorage.server(serverUuid) {
+                let info = match serverStorage.server(&node.serverUuid) {
                     Some(info) => info,
                     None => {
                         println!("server is not exist");
@@ -208,6 +230,46 @@ impl CSimple {
                 };
                 serverInfo = info;
             }
+            ///*
+            let mut cli = match client.lock() {
+                Ok(c) => c,
+                Err(err) => {
+                    println!("client lock error: {}", err);
+                    return Err("client lock error");
+                }
+            };
+            match cli.findStream(&node.serverUuid) {
+                Some(peerStream) => {
+                    CSimple::sendToServer(peerStream.try_clone().expect("send to peer try clone error"), request);
+                },
+                None => {
+                    mem::drop(cli);
+                    if let Ok(peerStream) = Client::serverConnect(&serverInfo.net) {
+                        let mut cli = match client.lock() {
+                            Ok(c) => c,
+                            Err(err) => {
+                                println!("client lock error");
+                                return Err("client lock error");
+                            }
+                        };
+                        cli.addServer(&node.serverUuid, peerStream.try_clone().expect("send to peer try clone error"));
+                        mem::drop(cli);
+                        match CSimple::sendToServer(peerStream, request) {
+                            Ok(_) => {
+                                println!("send to other server success");
+                            },
+                            Err(err) => {
+                                println!("send to other server error, err: {}", err);
+                            }
+                        };
+                    } else {
+                        println!("connect server error");
+                        return Err("connect server error");
+                    }
+                }
+            };
+            //*/
+            /*
             let mut streamFd = 0;
             let mut isFind = true;
             {
@@ -218,7 +280,7 @@ impl CSimple {
                         return Err("client lock error");
                     }
                 };
-                if let Some(fd) = client.findStream(serverUuid) {
+                if let Some(fd) = client.findStream(&node.serverUuid) {
                     isFind = true;
                     streamFd = fd;
                 } else {
@@ -226,14 +288,8 @@ impl CSimple {
                 }
             }
             if isFind == false {
-                if let Ok(s) = Client::serverConnect(&serverInfo.net) {
-                    let stream = match s.try_clone() {
-                        Ok(s) => s,
-                        Err(err) => {
-                            println!("stream try_clone error");
-                            return Err("stream try_clone error");
-                        }
-                    };
+                println!("server client not found");
+                if let Ok(fd) = Client::serverConnect(&serverInfo.net) {
                     let mut client = match client.lock() {
                         Ok(c) => c,
                         Err(err) => {
@@ -241,16 +297,18 @@ impl CSimple {
                             return Err("client lock error");
                         }
                     };
-                    client.addServer(serverUuid, stream);
-                    streamFd = tcp::stream2fd(s);
+                    client.addServer(&node.serverUuid, fd);
+                    streamFd = fd;
                 } else {
                     println!("connect server error");
                     return Err("connect server error");
                 }
             }
+            println!("other server streamFd: {}", streamFd);
             let peerStream = tcp::fd2stream(streamFd);
-            CSimple::sendToPeer(peerStream, request);
+            CSimple::sendToPeer(peerStream.try_clone().expect("send to peer try clone error"), request);
             mem::forget(peerStream);
+            */
         }
         Ok(())
     }
@@ -263,12 +321,37 @@ impl CSimple {
         } else if request.requestMode == consts::proto::response_mode_data {
             buf = encode::response::res::encodeDataTransfer(request);
         } else {
+            println!("request mode is not support, mode: {}", &request.requestMode);
             return Err("request mode is not support");
         }
         if let Err(err) = writer.write_all(&buf) {
+            println!("write all error, err: {}", err);
             return Err("write all error");
         };
         if let Err(err) = writer.flush() {
+            println!("flush error, err: {}", err);
+            return Err("flush error");
+        };
+        Ok(())
+    }
+
+    fn sendToServer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
+        let mut writer = BufWriter::new(&stream);
+        let mut buf: Vec<u8> = Vec::new();
+        if request.requestMode == consts::proto::response_mode_peer_ack {
+            buf = encode::response::res::encodeOtherServerAckRequest(request);
+        } else if request.requestMode == consts::proto::response_mode_data {
+            buf = encode::response::res::encodeOtherServerDataRequest(request);
+        } else {
+            println!("request mode is not support, mode: {}", &request.requestMode);
+            return Err("request mode is not support");
+        }
+        if let Err(err) = writer.write_all(&buf) {
+            println!("write all error, err: {}", err);
+            return Err("write all error");
+        };
+        if let Err(err) = writer.flush() {
+            println!("flush error, err: {}", err);
             return Err("flush error");
         };
         Ok(())
@@ -288,6 +371,7 @@ impl CSimple {
 
     fn handleListen(&self, listener: TcpListener) -> Result<(), &str> {
         for stream in listener.incoming() {
+            println!("new connect");
             let stream = match stream {
                 Ok(s) => s,
                 Err(err) => {
