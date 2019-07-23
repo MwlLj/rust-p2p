@@ -96,7 +96,6 @@ impl CSimple {
                     return;
                 }
             };
-            println!("{:?}", &request);
             if request.requestMode == consts::proto::request_mode_connect {
                 // handleConnect
                 if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid, &serverUuid) {
@@ -245,6 +244,7 @@ impl CSimple {
                 None => {
                     mem::drop(cli);
                     if let Ok(peerStream) = Client::serverConnect(&serverInfo.net) {
+                        println!("connect other server success");
                         let mut cli = match client.lock() {
                             Ok(c) => c,
                             Err(err) => {
@@ -263,7 +263,7 @@ impl CSimple {
                             }
                         };
                     } else {
-                        println!("connect server error");
+                        println!("connect other server error");
                         return Err("connect server error");
                     }
                 }
