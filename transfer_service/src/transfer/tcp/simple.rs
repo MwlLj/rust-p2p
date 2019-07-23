@@ -468,7 +468,8 @@ impl CServer {
             };
             break;
         }
-        let mut addr = param.listenIp.to_string();
+        // let mut addr = param.listenIp.to_string();
+        let mut addr = "0.0.0.0".to_string();
         addr.push_str(":");
         addr.push_str(&param.listenPort.to_string());
         // bind
