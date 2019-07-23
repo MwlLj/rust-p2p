@@ -208,8 +208,14 @@ impl CSimple {
             }
             */
             let peerStream = tcp::fd2stream(node.streamFd);
-            CSimple::sendToPeer(peerStream.try_clone().unwrap(), request);
-            mem::forget(peerStream);
+            match CSimple::sendToPeer(peerStream.try_clone().unwrap(), request) {
+                Ok(()) => {
+                    mem::forget(peerStream);
+                },
+                Err(err) => {
+                    println!("send to peer error, err: {}", err);
+                }
+            };
         } else {
             let mut serverInfo = shared::server::CServerInfo::default();
             {
