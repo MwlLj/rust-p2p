@@ -214,6 +214,7 @@ impl CSimple {
                 },
                 Err(err) => {
                     println!("send to peer error, err: {}", err);
+                    return Err("peer is offline");
                 }
             };
         } else {
@@ -266,6 +267,16 @@ impl CSimple {
                             },
                             Err(err) => {
                                 println!("send to other server error, err: {}", err);
+                                let mut cli = match client.lock() {
+                                    Ok(c) => c,
+                                    Err(err) => {
+                                        println!("client lock error");
+                                        return Err("client clock error");
+                                    }
+                                };
+                                cli.delServer(&node.serverUuid);
+                                mem::drop(cli);
+                                return Err("send to other server error");
                             }
                         };
                     } else {

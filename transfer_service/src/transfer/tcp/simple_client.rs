@@ -93,6 +93,10 @@ impl CClient {
         self.serverNets.insert(serverUuid.to_string(), stream);
     }
 
+    pub fn delServer(&mut self, serverUuid: &str) {
+        self.serverNets.remove(serverUuid);
+    }
+
     pub fn serverConnect(serverNet: &shared::server::CNet) -> Result<TcpStream, &str> {
         let addr = CClient::joinAddr(serverNet);
         let stream = match TcpStream::connect(addr.as_str()) {
