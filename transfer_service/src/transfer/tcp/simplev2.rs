@@ -20,16 +20,19 @@ use std::sync::Mutex;
 use std::io::BufWriter;
 use std::io::prelude::*;
 use std::mem;
+use std::collections::HashMap;
 
 type NodeSharedStorage = shared::node::redis::CRedis;
 type ServerSharedStorage = shared::server::redis::CRedis;
 type Client = transfer::tcp::simple_client::CClient;
+type Nodes = HashMap<String, TcpStream>;
 
 struct CSimple {
     serverUuid: String,
     nodeStorage: Arc<Mutex<NodeSharedStorage>>,
     serverStorage: Arc<Mutex<ServerSharedStorage>>,
     threadPool: Arc<Mutex<CThreadPool>>,
+    nodes: Arc<Mutex<Nodes>>,
     client: Arc<Mutex<Client>>
 }
 
@@ -39,6 +42,7 @@ impl CSimple {
         let threadPool = self.threadPool.clone();
         let serverStorage = self.serverStorage.clone();
         let serverUuid = self.serverUuid.clone();
+        let nodes = self.nodes.clone();
         let client = self.client.clone();
         thread::spawn(move || {
             let mut req = request::CRequest::default();
@@ -64,6 +68,7 @@ impl CSimple {
                     let nodeStorage = nodeStorage.clone();
                     let serverStorage = serverStorage.clone();
                     let serverUuid = serverUuid.clone();
+                    let nodes = nodes.clone();
                     let client = client.clone();
                     let mut request = req.clone();
                     let threadPool = match threadPool.lock() {
@@ -74,11 +79,8 @@ impl CSimple {
                         }
                     };
                     threadPool.execute(move || {
-                        CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, client);
+                        CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, nodes, client);
                     });
-                    // thread::spawn(move || {
-                    //     CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, client);
-                    // });
                     return true;
                 });
                 break;
@@ -98,7 +100,7 @@ impl CSimple {
         Ok(())
     }
 
-    fn handleRequest(mut request: request::CRequest, stream: TcpStream, nodeStorage: Arc<Mutex<NodeSharedStorage>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, serverUuid: String, client: Arc<Mutex<Client>>) {
+    fn handleRequest(mut request: request::CRequest, stream: TcpStream, nodeStorage: Arc<Mutex<NodeSharedStorage>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, serverUuid: String, nodes: Arc<Mutex<Nodes>>, client: Arc<Mutex<Client>>) {
         let mut result: u8 = 0;
         loop {
             let s = match stream.try_clone() {
@@ -111,21 +113,21 @@ impl CSimple {
             };
             if request.requestMode == consts::proto::request_mode_connect {
                 // handleConnect
-                if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), s, &request.selfCommunicateUuid, &serverUuid) {
+                if let Err(err) = CSimple::handleConnect(nodeStorage.clone(), nodes.clone(), s, &request.selfCommunicateUuid, &serverUuid) {
                     println!("handle connect error, error: {}", err);
                     result = 1;
                     break;
                 }
             } else if request.requestMode == consts::proto::request_mode_data {
                 // handleDataTransfer
-                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
+                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), nodes.clone(), s, &mut request) {
                     println!("handle data transfer error, err: {}", err);
                     result = 1;
                     break;
                 }
             } else if request.requestMode == consts::proto::request_mode_ack {
                 // handleAckTransfer
-                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
+                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), nodes.clone(), s, &mut request) {
                     println!("handle ack transfer error, err: {}", err);
                     result = 1;
                     break;
@@ -152,7 +154,7 @@ impl CSimple {
         // return true;
     }
 
-    fn handleConnect<'a>(storage: Arc<Mutex<NodeSharedStorage>>, stream: TcpStream, selfCommunicateUuid: &'a str, serverUuid: &'a str) -> Result<(), &'a str> {
+    fn handleConnect<'a>(storage: Arc<Mutex<NodeSharedStorage>>, nodes: Arc<Mutex<Nodes>>, stream: TcpStream, selfCommunicateUuid: &'a str, serverUuid: &'a str) -> Result<(), &'a str> {
         /*
         1. add socket info to shared
         */
@@ -163,18 +165,27 @@ impl CSimple {
                 return Err("storage lock error");
             }
         };
-        let addr = tcp::stream2fd(stream);
+        // let addr = tcp::stream2fd(stream);
         if let Err(err) = storage.addCommunicateNode(selfCommunicateUuid, &shared::node::CCommunicateNode{
-            streamFd: addr,
+            streamFd: 0,
             serverUuid: serverUuid.to_string()
         }) {
             println!("addCommunicateNode error to shared erorr, {}", err);
             return Err("addCommunicateNode to shared error");
         };
+        let mut nodes = match nodes.lock() {
+            Ok(ns) => ns,
+            Err(err) => {
+                println!("nodes lock error");
+                return Err("node lock error");
+            }
+        };
+        // if exist -> update; otherwise add
+        nodes.insert(selfCommunicateUuid.to_string(), stream);
         Ok(())
     }
 
-    fn handleTransfer<'a>(serverUuid: &'a str, client: Arc<Mutex<Client>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, nodeStorage: Arc<Mutex<NodeSharedStorage>>, stream: TcpStream, request: &'a mut request::CRequest) -> Result<(), &'a str> {
+    fn handleTransfer<'a>(serverUuid: &'a str, client: Arc<Mutex<Client>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, nodeStorage: Arc<Mutex<NodeSharedStorage>>, nodes: Arc<Mutex<Nodes>>, stream: TcpStream, request: &'a mut request::CRequest) -> Result<(), &'a str> {
         /*
         1. serverUuid is self
             yes -> find socket, then transfer
@@ -200,35 +211,8 @@ impl CSimple {
         }
         if node.serverUuid == serverUuid {
             /*
-            let mut streamFd: u64 = 0;
-            {
-                let nodeStorage = match nodeStorage.lock() {
-                    Ok(s) => s,
-                    Err(err) => {
-                        println!("node storage lock error, err: {}", err);
-                        return Err("node storage lock error");
-                    }
-                };
-                let node = match nodeStorage.communicateNode(&request.peerCommunicateUuid) {
-                    Some(node) => node,
-                    None => {
-                        // response error
-                        println!("peer is not exist");
-                        return Err("peer is not exist");
-                    }
-                };
-                streamFd = node.streamFd;
-            }
-            */
             let peerStream = tcp::fd2stream(node.streamFd);
-            let stream = match peerStream.try_clone() {
-                Ok(s) => s,
-                Err(err) => {
-                    println!("peer stream tryclone error, err: {}", err);
-                    return Err("peer stream try clone error");
-                }
-            };
-            match CSimple::sendToPeer(stream, request) {
+            match CSimple::sendToPeer(peerStream.try_clone().unwrap(), request) {
                 Ok(()) => {
                     mem::forget(peerStream);
                 },
@@ -237,6 +221,27 @@ impl CSimple {
                     return Err("peer is offline");
                 }
             };
+            */
+            let nodes = match nodes.lock() {
+                Ok(ns) => ns,
+                Err(err) => {
+                    println!("nodes lock error");
+                    return Err("nodes lock error");
+                }
+            };
+            if let Some(s) = nodes.get(&request.peerCommunicateUuid) {
+                match CSimple::sendToPeer(s.try_clone().unwrap(), request) {
+                    Ok(()) => {
+                    },
+                    Err(err) => {
+                        println!("send to peer error, err: {}", err);
+                        return Err("peer is offline");
+                    }
+                };
+            } else {
+                println!("node not found");
+                return Err("node not found");
+            }
         } else {
             let mut serverInfo = shared::server::CServerInfo::default();
             {
@@ -266,40 +271,36 @@ impl CSimple {
             };
             match cli.findStream(&node.serverUuid) {
                 Some(peerStream) => {
-                    println!("found server");
-                    // mem::drop(cli);
-                    // CSimple::sendToServer(peerStream.try_clone().expect("send to peer try clone error"), request);
-                    CSimple::sendToServer(peerStream, request);
+                    CSimple::sendToServer(peerStream.try_clone().expect("send to peer try clone error"), request);
                 },
                 None => {
-                    println!("not found server");
-                    // mem::drop(cli);
+                    mem::drop(cli);
                     if let Ok(peerStream) = Client::serverConnect(&serverInfo.net) {
                         println!("connect other server success");
-                        // let mut cli = match client.lock() {
-                        //     Ok(c) => c,
-                        //     Err(err) => {
-                        //         println!("client lock error");
-                        //         return Err("client lock error");
-                        //     }
-                        // };
+                        let mut cli = match client.lock() {
+                            Ok(c) => c,
+                            Err(err) => {
+                                println!("client lock error");
+                                return Err("client lock error");
+                            }
+                        };
                         cli.addServer(&node.serverUuid, peerStream.try_clone().expect("send to peer try clone error"));
-                        // mem::drop(cli);
+                        mem::drop(cli);
                         match CSimple::sendToServer(peerStream, request) {
                             Ok(_) => {
                                 println!("send to other server success");
                             },
                             Err(err) => {
                                 println!("send to other server error, err: {}", err);
-                                // let mut cli = match client.lock() {
-                                //     Ok(c) => c,
-                                //     Err(err) => {
-                                //         println!("client lock error");
-                                //         return Err("client clock error");
-                                //     }
-                                // };
+                                let mut cli = match client.lock() {
+                                    Ok(c) => c,
+                                    Err(err) => {
+                                        println!("client lock error");
+                                        return Err("client clock error");
+                                    }
+                                };
                                 cli.delServer(&node.serverUuid);
-                                // mem::drop(cli);
+                                mem::drop(cli);
                                 return Err("send to other server error");
                             }
                         };
@@ -530,20 +531,23 @@ impl CServer {
         };
         let nodeStorage = Arc::new(Mutex::new(node));
         let threadPool = Arc::new(Mutex::new(CThreadPool::new(10)));
+        let nodes = Arc::new(Mutex::new(HashMap::new()));
         let client = Arc::new(Mutex::new(Client::new()));
         // let serverStorage = self.serverStorage.clone();
         for i in 0..param.threadMax {
             let nodeStorage = nodeStorage.clone();
             let threadPool = threadPool.clone();
             let serverStorage = self.serverStorage.clone();
+            let nodes = nodes.clone();
             let client = client.clone();
             let listen = listener.try_clone().unwrap();
             let serverUuid = self.serverUuid.clone();
             thread::spawn(move || {
                 let obj = CSimple{
                     serverUuid: serverUuid.clone(),
-                    threadPool: threadPool,
                     nodeStorage: nodeStorage,
+                    threadPool: threadPool,
+                    nodes: nodes,
                     serverStorage: serverStorage,
                     client: client
                 };

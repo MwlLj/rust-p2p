@@ -20,6 +20,10 @@ version = "0.1.7"
 git = "https://github.com/MwlLj/rust-libs"
 version = "*"
 
+[dependencies.rust_pool]
+git = "https://github.com/MwlLj/rust-pool"
+version = "*"
+
 [dependencies.socket]
 git = "https://github.com/MwlLj/rust-libs"
 version = "0.1.1"
