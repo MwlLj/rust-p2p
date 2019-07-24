@@ -48,6 +48,7 @@ fn main() {
             return;
         }
     };
+    let serverUuid = "".to_string();
     println!("serverUuid: {}", &serverUuid);
     thread::spawn(move || {
         let cli = Arc::new(cli);
@@ -65,7 +66,7 @@ fn main() {
                 println!("sendAsyn error, err: {}", err);
                 return;
             };
-            thread::sleep(time::Duration::from_secs(1));
+            thread::sleep(time::Duration::from_millis(50));
         }
     });
 
