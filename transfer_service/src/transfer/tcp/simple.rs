@@ -94,6 +94,7 @@ impl CSimple {
                 }
             };
             nodeStorage.delNode(&req.selfCommunicateUuid);
+            mem::drop(stream);
         });
         Ok(())
     }
@@ -221,6 +222,17 @@ impl CSimple {
             }
             */
             let peerStream = tcp::fd2stream(node.streamFd);
+            match peerStream.take_error() {
+                Ok(e) => {
+                    if let None = e {
+                        return Err("take error");
+                    };
+                },
+                Err(err) => {
+                    println!("take error, err: {}", err);
+                    return Err("take error");
+                }
+            };
             let stream = match peerStream.try_clone() {
                 Ok(s) => s,
                 Err(err) => {
