@@ -269,7 +269,24 @@ impl CSimple {
                     println!("found server");
                     // mem::drop(cli);
                     // CSimple::sendToServer(peerStream.try_clone().expect("send to peer try clone error"), request);
-                    CSimple::sendToServer(peerStream, request);
+                    match CSimple::sendToServer(peerStream, request) {
+                        Ok(_) => {
+                            println!("send to other server success");
+                        },
+                        Err(err) => {
+                            println!("send to other server error, err: {}", err);
+                            // let mut cli = match client.lock() {
+                            //     Ok(c) => c,
+                            //     Err(err) => {
+                            //         println!("client lock error");
+                            //         return Err("client clock error");
+                            //     }
+                            // };
+                            cli.delServer(&node.serverUuid);
+                            // mem::drop(cli);
+                            return Err("send to other server error");
+                        }
+                    };
                 },
                 None => {
                     println!("not found server");
