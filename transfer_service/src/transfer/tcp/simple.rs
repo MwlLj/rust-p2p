@@ -27,6 +27,8 @@ type Client = transfer::tcp::simple_client::CClient;
 
 struct CSimple {
     serverUuid: String,
+    serverIp: String,
+    serverPort: u32,
     nodeStorage: Arc<Mutex<NodeSharedStorage>>,
     serverStorage: Arc<Mutex<ServerSharedStorage>>,
     threadPool: Arc<Mutex<CThreadPool>>,
@@ -39,6 +41,8 @@ impl CSimple {
         let threadPool = self.threadPool.clone();
         let serverStorage = self.serverStorage.clone();
         let serverUuid = self.serverUuid.clone();
+        let serverIp = self.serverIp.clone();
+        let serverPort = self.serverPort;
         let client = self.client.clone();
         thread::spawn(move || {
             let mut req = request::CRequest::default();
@@ -64,6 +68,8 @@ impl CSimple {
                     let nodeStorage = nodeStorage.clone();
                     let serverStorage = serverStorage.clone();
                     let serverUuid = serverUuid.clone();
+                    let serverIp = serverIp.clone();
+                    let serverPort = serverPort;
                     let client = client.clone();
                     let mut request = req.clone();
                     let threadPool = match threadPool.lock() {
@@ -74,7 +80,7 @@ impl CSimple {
                         }
                     };
                     threadPool.execute(move || {
-                        CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, client);
+                        CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, serverIp, serverPort, client);
                     });
                     // thread::spawn(move || {
                     //     CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, client);
@@ -99,7 +105,7 @@ impl CSimple {
         Ok(())
     }
 
-    fn handleRequest(mut request: request::CRequest, stream: TcpStream, nodeStorage: Arc<Mutex<NodeSharedStorage>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, serverUuid: String, client: Arc<Mutex<Client>>) {
+    fn handleRequest(mut request: request::CRequest, stream: TcpStream, nodeStorage: Arc<Mutex<NodeSharedStorage>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, serverUuid: String, serverIp: String, serverPort: u32, client: Arc<Mutex<Client>>) {
         let mut result: u8 = 0;
         loop {
             let s = match stream.try_clone() {
@@ -119,14 +125,14 @@ impl CSimple {
                 }
             } else if request.requestMode == consts::proto::request_mode_data {
                 // handleDataTransfer
-                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
+                if let Err(err) = CSimple::handleTransfer(&serverUuid, &serverIp, &serverPort, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
                     println!("handle data transfer error, err: {}", err);
                     result = 1;
                     break;
                 }
             } else if request.requestMode == consts::proto::request_mode_ack {
                 // handleAckTransfer
-                if let Err(err) = CSimple::handleTransfer(&serverUuid, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
+                if let Err(err) = CSimple::handleTransfer(&serverUuid, &serverIp, &serverPort, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
                     println!("handle ack transfer error, err: {}", err);
                     result = 1;
                     break;
@@ -175,7 +181,7 @@ impl CSimple {
         Ok(())
     }
 
-    fn handleTransfer<'a>(serverUuid: &'a str, client: Arc<Mutex<Client>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, nodeStorage: Arc<Mutex<NodeSharedStorage>>, stream: TcpStream, request: &'a mut request::CRequest) -> Result<(), &'a str> {
+    fn handleTransfer<'a>(serverUuid: &'a str, serverIp: &'a str, serverPort: &'a u32, client: Arc<Mutex<Client>>, serverStorage: Arc<Mutex<ServerSharedStorage>>, nodeStorage: Arc<Mutex<NodeSharedStorage>>, stream: TcpStream, request: &'a mut request::CRequest) -> Result<(), &'a str> {
         /*
         1. serverUuid is self
             yes -> find socket, then transfer
@@ -224,7 +230,8 @@ impl CSimple {
             let peerStream = tcp::fd2stream(node.streamFd);
             match peerStream.take_error() {
                 Ok(e) => {
-                    if let None = e {
+                    if let Some(err) = e {
+                        println!("take error, err: {}", err);
                         return Err("take error");
                     };
                 },
@@ -267,6 +274,9 @@ impl CSimple {
                     }
                 };
                 serverInfo = info;
+            }
+            if serverInfo.net.ip == serverIp && serverInfo.net.port == *serverPort {
+                return Err("other server is self");
             }
             ///*
             let mut cli = match client.lock() {
@@ -463,6 +473,14 @@ impl CSimple {
         Ok(())
     }
 
+    fn joinAddr(&self, ip: &str, port: u32) -> String {
+        let mut addr = String::new();
+        addr.push_str(ip);
+        addr.push_str(":");
+        addr.push_str(&port.to_string());
+        addr
+    }
+
     fn portReuselisten(&self, port: u32) -> Result<(), &str> {
         // port reuse
         let tcpBuilder = match TcpBuilder::new_v4() {
@@ -568,9 +586,13 @@ impl CServer {
             let client = client.clone();
             let listen = listener.try_clone().unwrap();
             let serverUuid = self.serverUuid.clone();
+            let serverIp = param.listenIp.to_string();
+            let serverPort = param.listenPort;
             thread::spawn(move || {
                 let obj = CSimple{
                     serverUuid: serverUuid.clone(),
+                    serverIp: serverIp.clone(),
+                    serverPort: serverPort,
                     threadPool: threadPool,
                     nodeStorage: nodeStorage,
                     serverStorage: serverStorage,
