@@ -18,6 +18,7 @@ pub fn encodeAck(res: &mut response::CAck) -> Vec<u8> {
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
+    u8arr::u64AppendTou8arr(0, 4, &mut buf);
     buf
 }
 
@@ -40,6 +41,8 @@ pub fn encodeDataTransfer(req: &mut request::CRequest) -> Vec<u8> {
     u8arr::u32NumberAppendTou8arr(req.packageTotal, &mut buf);
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
+    u8arr::u64AppendTou8arr(req.extraData.len() as u64, 4, &mut buf);
+    buf.append(&mut req.extraData);
     buf
 }
 
@@ -60,6 +63,7 @@ pub fn encodeAckTransfer(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.peerResult.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
+    u8arr::u64AppendTou8arr(0, 4, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
     buf
 }
@@ -82,6 +86,8 @@ pub fn encodeOtherServerDataRequest(req: &mut request::CRequest) -> Vec<u8> {
     u8arr::u32NumberAppendTou8arr(req.packageTotal, &mut buf);
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
+    u8arr::u64AppendTou8arr(req.extraData.len() as u64, 4, &mut buf);
+    buf.append(&mut req.extraData);
     buf
 }
 
@@ -101,6 +107,7 @@ pub fn encodeOtherServerAckRequest(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.peerResult.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
+    u8arr::u64AppendTou8arr(0, 4, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
     buf
 }

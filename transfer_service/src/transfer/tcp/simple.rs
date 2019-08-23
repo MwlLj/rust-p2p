@@ -80,6 +80,7 @@ impl CSimple {
                         }
                     };
                     threadPool.execute(move || {
+                        // println!("{:?}", request);
                         CSimple::handleRequest(request, stream, nodeStorage, serverStorage, serverUuid, serverIp, serverPort, client);
                     });
                     // thread::spawn(move || {
@@ -152,7 +153,7 @@ impl CSimple {
             serverUuid: serverUuid.to_string(),
             result: result
         }) {
-            println!("send response error");
+            println!("send response error, err: {}", err);
             // return false;
             return;
         };

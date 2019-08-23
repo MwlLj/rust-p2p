@@ -42,8 +42,10 @@ macro_rules! decode_request {
             u8arr::u8arrTou64($data.as_slice(), &mut $request.packageTotal);
         } else if $index == 17 {
             $request.data = $data;
+        } else if $index == 19 {
+            $request.extraData = $data;
         }
-        if $index == 17 {
+        if $index == 19 {
             return (false, 0);
         }
         if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 11 || $index == 13 {
