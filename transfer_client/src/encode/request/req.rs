@@ -17,6 +17,7 @@ pub fn encodeConnect(req: &mut request::CConnect) -> Vec<u8> {
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
+    u8arr::u64AppendTou8arr(0, 4, &mut buf);
     buf
 }
 
@@ -37,6 +38,8 @@ pub fn encodeData(req: &mut request::CData) -> Vec<u8> {
     u8arr::u32NumberAppendTou8arr(req.packageTotal, &mut buf);
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
+    u8arr::u64AppendTou8arr(req.extraData.len() as u64, 4, &mut buf);
+    buf.append(&mut req.extraData);
     buf
 }
 
@@ -56,6 +59,7 @@ pub fn encodeAck(req: &mut request::CAck) -> Vec<u8> {
     buf.append(&mut req.result.to_string().as_bytes().to_vec());
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
+    u8arr::u64AppendTou8arr(0, 4, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
     buf
 }

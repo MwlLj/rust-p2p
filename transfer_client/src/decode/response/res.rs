@@ -48,8 +48,10 @@ macro_rules! decode_response {
             u8arr::u8arrTou64($data.as_slice(), &mut $response.packageTotal);
         } else if $index == 19 {
             $response.data = $data;
+        } else if $index == 21 {
+            $response.extraData = $data;
         }
-        if $index == 19 {
+        if $index == 21 {
             return (false, 0);
         }
         if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 9 || $index == 13 || $index == 15 {
