@@ -17,6 +17,7 @@ fn main() {
     let peerUuid = cmdHandler.register("-peer", "654321");
     let objectUuid = cmdHandler.register("-obj", "123");
     let data = cmdHandler.register("-data", "hello");
+    let extraData = cmdHandler.register("-extraData", "");
     cmdHandler.parse();
 
     let server = server.borrow().to_string();
@@ -24,6 +25,7 @@ fn main() {
     let peerUuid = peerUuid.borrow().to_string();
     let objectUuid = objectUuid.borrow().to_string();
     let data = data.borrow().to_string();
+    let extraData = extraData.borrow().to_string();
 
     println!("self: {}, peer: {}", selfUuid, peerUuid);
 
@@ -48,7 +50,6 @@ fn main() {
             return;
         }
     };
-    let serverUuid = "".to_string();
     println!("serverUuid: {}", &serverUuid);
     thread::spawn(move || {
         let cli = Arc::new(cli);
@@ -61,7 +62,8 @@ fn main() {
                 objectUuid: (*objectUuid).to_string(),
                 packageIndex: 0,
                 packageTotal: 0,
-                data: (*data).as_bytes().to_vec()
+                data: (*data).as_bytes().to_vec(),
+                extraData: (*extraData).as_bytes().to_vec()
             }) {
                 println!("sendAsyn error, err: {}", err);
                 return;
