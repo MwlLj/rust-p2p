@@ -4,3 +4,4 @@ pub mod decode;
 pub mod encode;
 pub mod structs;
 pub mod client;
+pub mod wraps;

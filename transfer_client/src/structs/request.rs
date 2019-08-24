@@ -26,3 +26,11 @@ pub struct CAck {
     pub result: String
 }
 
+// #[derive(Default)]
+// pub struct CPeerAck {
+//     pub selfCommunicateUuid: String,
+//     pub peerCommunicateUuid: String,
+//     pub objectUuid: String,
+//     pub peerResult: String
+// }
+

@@ -15,14 +15,17 @@ use std::time;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+use std::collections::HashMap;
 
 type DataRecvCb = Box<dyn Fn(&response::CResponse, &CSimple) -> bool + Send + Sync>;
+type SyncSenders = HashMap<String, Arc<Mutex<mpsc::Sender<response::CResponse>>>>;
 
 pub struct CSimple {
     stream: TcpStream,
     ackSend: Arc<Mutex<mpsc::Sender<response::CAck>>>,
     ackRecv: Arc<Mutex<mpsc::Receiver<response::CAck>>>,
-    dataRecvCb: Arc<DataRecvCb>
+    dataRecvCb: Arc<DataRecvCb>,
+    dataSyncSenders: SyncSenders
 }
 
 impl CSimple {
@@ -95,13 +98,52 @@ impl CSimple {
         let ack = match ackRecv.recv_timeout(time::Duration::from_secs(timeoutS)) {
             Ok(ack) => ack,
             Err(err) => {
-                println!("connect recv ack error, err: {}", err);
-                return Err("connect recv ack error");
+                println!("ackRecv recv ack error, err: {}", err);
+                return Err("ackRecv recv ack error");
             }
         };
         if ack.result != 0 {
             println!("server response error, result: {}", ack.result);
             return Err("server response error");
+        }
+        Ok(())
+    }
+
+    pub fn sendAckAsync(&self, ack: &mut request::CAck) -> Result<(), &str> {
+        let v = encode::request::req::encodeAck(ack);
+        let mut writer = BufWriter::new(&self.stream);
+        if let Err(err) = writer.write_all(&v) {
+            return Err("sendAck write all error");
+        };
+        if let Err(err) = writer.flush() {
+            return Err("sendAck flush error");
+        };
+        Ok(())
+    }
+
+    pub fn sendDataUtilPeerAck(&mut self, data: &mut request::CData, timeoutS: u64) -> Result<(), &str> {
+        let v = encode::request::req::encodeData(data);
+        let mut writer = BufWriter::new(&self.stream);
+        if let Err(err) = writer.write_all(&v) {
+            return Err("write all error");
+        };
+        if let Err(err) = writer.flush() {
+            return Err("flush error");
+        };
+        let (s, r) = mpsc::channel();
+        // store sends
+        self.dataSyncSenders.insert(data.objectUuid.clone(), Arc::new(Mutex::new(s)));
+        // wait
+        let ack = match r.recv_timeout(time::Duration::from_secs(timeoutS)) {
+            Ok(ack) => ack,
+            Err(err) => {
+                println!("recv ack timeout error, err: {}", err);
+                return Err("recv ack timeout error");
+            }
+        };
+        if ack.result != 0 {
+            println!("peer response error, result: {}", ack.result);
+            return Err("peer response error");
         }
         Ok(())
     }
@@ -120,6 +162,7 @@ impl CSimple {
         let mut res = response::CResponse::default();
         let simple = Arc::new(self);
         block.lines(1, &mut res, &mut |index: u64, data: Vec<u8>, response: &mut response::CResponse| -> (bool, u64) {
+            println!("decode response");
             decode_response!(index, data, response);
         }, &mut |response: &mut response::CResponse| -> bool {
             println!("response mode: {:?}", &response.responseMode);
@@ -127,7 +170,7 @@ impl CSimple {
                 simple.handleAck(response);
             } else if response.responseMode == consts::proto::response_mode_data {
                 simple.handleData(response);
-            } else if response.responseMode == consts::proto::response_mode_peer_ack {
+            } else if response.responseMode == consts::proto::request_mode_peer_ack {
             }
             return true;
         });
@@ -167,7 +210,8 @@ impl CSimple {
             stream: stream,
             ackSend: Arc::new(Mutex::new(s)),
             ackRecv: Arc::new(Mutex::new(r)),
-            dataRecvCb: Arc::new(Box::new(f))
+            dataRecvCb: Arc::new(Box::new(f)),
+            dataSyncSenders: HashMap::new()
         };
         let simple = Arc::new(simple);
         {

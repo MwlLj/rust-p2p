@@ -33,11 +33,3 @@ pub struct CAck {
     pub serverUuid: String,
     pub result: u8
 }
-
-#[derive(Default)]
-pub struct CPeerAck {
-    pub selfCommunicateUuid: String,
-    pub peerCommunicateUuid: String,
-    pub objectUuid: String,
-    pub peerResult: String
-}

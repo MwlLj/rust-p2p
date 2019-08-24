@@ -397,7 +397,7 @@ impl CSimple {
     fn sendToPeer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
         let mut writer = BufWriter::new(&stream);
         let mut buf: Vec<u8> = Vec::new();
-        if request.requestMode == consts::proto::response_mode_peer_ack {
+        if request.requestMode == consts::proto::request_mode_peer_ack {
             buf = encode::response::res::encodeAckTransfer(request);
         } else if request.requestMode == consts::proto::response_mode_data {
             buf = encode::response::res::encodeDataTransfer(request);
@@ -419,7 +419,7 @@ impl CSimple {
     fn sendToServer<'a>(stream: TcpStream, request: &mut request::CRequest) -> Result<(), &'a str> {
         let mut writer = BufWriter::new(&stream);
         let mut buf: Vec<u8> = Vec::new();
-        if request.requestMode == consts::proto::response_mode_peer_ack {
+        if request.requestMode == consts::proto::request_mode_peer_ack {
             buf = encode::response::res::encodeOtherServerAckRequest(request);
         } else if request.requestMode == consts::proto::response_mode_data {
             buf = encode::response::res::encodeOtherServerDataRequest(request);

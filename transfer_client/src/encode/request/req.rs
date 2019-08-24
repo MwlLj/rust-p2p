@@ -43,6 +43,9 @@ pub fn encodeData(req: &mut request::CData) -> Vec<u8> {
     buf
 }
 
+/*
+    encode send to peer's ack
+*/
 pub fn encodeAck(req: &mut request::CAck) -> Vec<u8> {
     let mut buf: Vec<u8> = Vec::new();
     u8arr::u64AppendTou8arr(proto::request_mode_ack.len() as u64, 1, &mut buf);
