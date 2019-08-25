@@ -148,7 +148,7 @@ impl CSimple {
                     return Err("dataSyncSenders lock error");
                 }
             };
-            dataSyncSenders.insert(data.objectUuid.clone(), Arc::new(Mutex::new(s)));
+            dataSyncSenders.insert(data.dataUuid.clone(), Arc::new(Mutex::new(s)));
         }
         let _d = defer::defer(|| {
             println!("defer");
@@ -159,7 +159,7 @@ impl CSimple {
                     return;
                 }
             };
-            dataSyncSenders.remove(&data.objectUuid);
+            dataSyncSenders.remove(&data.dataUuid);
         });
         // wait
         let ack = match r.recv_timeout(time::Duration::from_secs(timeoutS)) {
@@ -233,7 +233,7 @@ impl CSimple {
     }
 
     fn handlePeerAck(dataSyncSenders: Arc<Mutex<SyncSenders>>, response: &response::CResponse) {
-        // println!("handlePeerAck, objectUuid: {}", &response.objectUuid);
+        println!("handlePeerAck, dataUuid: {}", &response.dataUuid);
         let mut dataSyncSenders = match dataSyncSenders.lock() {
             Ok(d) => d,
             Err(err) => {
@@ -241,10 +241,10 @@ impl CSimple {
                 return;
             }
         };
-        let sender = match dataSyncSenders.get(&response.objectUuid) {
+        let sender = match dataSyncSenders.get(&response.dataUuid) {
             Some(s) => s,
             None => {
-                println!("handle peer ack");
+                println!("handle peer ack, not get dataUuid, map: {:?}, dataUuid: {}", &dataSyncSenders, &response.dataUuid);
                 return;
             }
         };
@@ -256,7 +256,7 @@ impl CSimple {
             }
         };
         sender.send(response::CPeerAck{
-            objectUuid: response.objectUuid.clone(),
+            dataUuid: response.dataUuid.clone(),
             peerResult: response.peerResult.clone()
         });
     }

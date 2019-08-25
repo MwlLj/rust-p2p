@@ -5,6 +5,7 @@ full response:
     result
     selfCommunicateUuid
     peerCommunicateUuid
+    dataUuid
     objectUuid
     peerResult
     packageIndex
@@ -20,6 +21,7 @@ pub struct CResponse {
     pub result: u8,
     pub selfCommunicateUuid: String,
     pub peerCommunicateUuid: String,
+    pub dataUuid: String,
     pub objectUuid: String,
     pub peerResult: String,
     pub packageIndex: u64,
@@ -36,6 +38,6 @@ pub struct CAck {
 
 #[derive(Default)]
 pub struct CPeerAck {
-    pub objectUuid: String,
+    pub dataUuid: String,
     pub peerResult: String
 }

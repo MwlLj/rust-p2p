@@ -10,6 +10,7 @@ pub struct CData {
     pub selfCommunicateUuid: String,
     pub peerCommunicateUuid: String,
     pub serverUuid: String,
+    pub dataUuid: String,
     pub objectUuid: String,
     pub packageIndex: u64,
     pub packageTotal: u64,
@@ -22,7 +23,7 @@ pub struct CAck {
     pub selfCommunicateUuid: String,
     pub peerCommunicateUuid: String,
     pub serverUuid: String,
-    pub objectUuid: String,
+    pub dataUuid: String,
     pub result: String
 }
 

@@ -13,3 +13,8 @@ version = "*"
 [dependencies.rust_parse]
 git = "https://github.com/MwlLj/rust_parse"
 version = "*"
+
+[dependencies.uuid]
+version = "0.7"
+default-features = false
+features = ["serde", "v4"]

@@ -14,6 +14,7 @@ pub fn encodeAck(res: &mut response::CAck) -> Vec<u8> {
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
+    u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(0, 1, &mut buf);
@@ -33,6 +34,8 @@ pub fn encodeDataTransfer(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.selfCommunicateUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerCommunicateUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.peerCommunicateUuid.as_bytes().to_vec());
+    u8arr::u64AppendTou8arr(req.dataUuid.len() as u64, 1, &mut buf);
+    buf.append(&mut req.dataUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.objectUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.objectUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerResult.len() as u64, 4, &mut buf);
@@ -57,6 +60,8 @@ pub fn encodeAckTransfer(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.selfCommunicateUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerCommunicateUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.peerCommunicateUuid.as_bytes().to_vec());
+    u8arr::u64AppendTou8arr(req.dataUuid.len() as u64, 1, &mut buf);
+    buf.append(&mut req.dataUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.objectUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.objectUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerResult.len() as u64, 4, &mut buf);
@@ -78,6 +83,8 @@ pub fn encodeOtherServerDataRequest(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.peerCommunicateUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.serverUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.serverUuid.as_bytes().to_vec());
+    u8arr::u64AppendTou8arr(req.dataUuid.len() as u64, 1, &mut buf);
+    buf.append(&mut req.dataUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.objectUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.objectUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerResult.len() as u64, 4, &mut buf);
@@ -101,6 +108,8 @@ pub fn encodeOtherServerAckRequest(req: &mut request::CRequest) -> Vec<u8> {
     buf.append(&mut req.peerCommunicateUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.serverUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.serverUuid.as_bytes().to_vec());
+    u8arr::u64AppendTou8arr(req.dataUuid.len() as u64, 1, &mut buf);
+    buf.append(&mut req.dataUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.objectUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.objectUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(req.peerResult.len() as u64, 4, &mut buf);

@@ -2,6 +2,7 @@ use transfer_client::client::tcp::simple;
 use transfer_client::structs::{request, response};
 
 use rust_parse::cmd::CCmd;
+use uuid;
 
 use std::thread;
 use std::time;
@@ -53,11 +54,12 @@ fn main() {
         file.write_all(data.data.as_slice());
         return true;
     }, |data: &response::CResponse| -> Option<request::CAck> {
+        println!("send ack, dataUuid: {}", &data.dataUuid);
         Some(request::CAck{
             selfCommunicateUuid: data.selfCommunicateUuid.clone(),
             peerCommunicateUuid: data.peerCommunicateUuid.clone(),
             serverUuid: data.serverUuid.clone(),
-            objectUuid: data.objectUuid.clone(),
+            dataUuid: data.dataUuid.clone(),
             result: "success".to_string()
         })
     }) {
@@ -80,10 +82,13 @@ fn main() {
 
     // sync send to peer
     loop {
+        let uid = uuid::Uuid::new_v4().to_string();
+        println!("send uuid: {}", &uid);
         cli.sendDataUtilPeerAck(&mut request::CData{
             selfCommunicateUuid: (*selfUuid).to_string(),
             peerCommunicateUuid: (*peerUuid).to_string(),
             serverUuid: serverUuid.clone(),
+            dataUuid: uid,
             objectUuid: (*objectUuid).to_string(),
             packageIndex: 0,
             packageTotal: 0,

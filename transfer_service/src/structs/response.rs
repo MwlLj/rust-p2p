@@ -5,6 +5,7 @@ full response:
     result
     selfCommunicateUuid
     peerCommunicateUuid
+    dataUuid
     objectUuid
     peerResult
     packageIndex

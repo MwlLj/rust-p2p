@@ -28,28 +28,33 @@ macro_rules! decode_request {
                 Err(_) => "".to_string()
             };
         } else if $index == 9 {
-            $request.objectUuid = match String::from_utf8($data) {
+            $request.dataUuid = match String::from_utf8($data) {
                 Ok(s) => s,
                 Err(_) => "".to_string()
             };
         } else if $index == 11 {
-            $request.peerResult = match String::from_utf8($data) {
+            $request.objectUuid = match String::from_utf8($data) {
                 Ok(s) => s,
                 Err(_) => "".to_string()
             };
         } else if $index == 13 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageIndex);
+            $request.peerResult = match String::from_utf8($data) {
+                Ok(s) => s,
+                Err(_) => "".to_string()
+            };
         } else if $index == 15 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageTotal);
+            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageIndex);
         } else if $index == 17 {
-            $request.data = $data;
+            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageTotal);
         } else if $index == 19 {
+            $request.data = $data;
+        } else if $index == 21 {
             $request.extraData = $data;
         }
-        if $index == 19 {
+        if $index == 21 {
             return (false, 0);
         }
-        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 11 || $index == 13 {
+        if $index == 1 || $index == 3 || $index == 5 || $index == 7 || $index == 9 || $index == 13 || $index == 15 {
             return (true, 1);
         } else {
             return (true, 4);
