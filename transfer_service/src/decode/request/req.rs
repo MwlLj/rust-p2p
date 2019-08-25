@@ -1,6 +1,7 @@
 #[macro_export]
 macro_rules! decode_request {
     ($index:ident, $data:ident, $request:ident) => ({
+        // println!("{:?}", $data);
         if $index % 2 == 0 {
             let mut number: u64 = 0;
             u8arr::u8arrTou64($data.as_slice(), &mut number);

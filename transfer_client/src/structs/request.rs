@@ -17,7 +17,7 @@ pub struct CData {
     pub extraData: Vec<u8>
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CAck {
     pub selfCommunicateUuid: String,
     pub peerCommunicateUuid: String,

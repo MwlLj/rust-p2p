@@ -131,6 +131,13 @@ impl CSimple {
                     result = 1;
                     break;
                 }
+            } else if request.requestMode == consts::proto::request_mode_peer_ack {
+                // handleAckTransfer
+                if let Err(err) = CSimple::handleTransfer(&serverUuid, &serverIp, &serverPort, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {
+                    println!("handle ack transfer error, err: {}", err);
+                    result = 1;
+                    break;
+                }
             } else if request.requestMode == consts::proto::request_mode_ack {
                 // handleAckTransfer
                 if let Err(err) = CSimple::handleTransfer(&serverUuid, &serverIp, &serverPort, client.clone(), serverStorage.clone(), nodeStorage.clone(), s, &mut request) {

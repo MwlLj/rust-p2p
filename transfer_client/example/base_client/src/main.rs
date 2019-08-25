@@ -29,11 +29,37 @@ fn main() {
 
     println!("self: {}, peer: {}", selfUuid, peerUuid);
 
-    let cli = match simple::CSimple::new(&(*server), |data: &response::CResponse, s: &simple::CSimple| -> bool {
+    // let mut cli = match simple::CSimple::new(&(*server), |data: &response::CResponse, s: &simple::CSimple| -> bool {
+    //     let mut file = OpenOptions::new().append(true).create(true).open("test.txt").expect("open file error");
+    //     file.write_all(data.data.as_slice());
+    //     // println!("recv data: {}", String::from_utf8(data.data).unwrap());
+    //     s.sendAckToPeerAsync(&mut request::CAck{
+    //         selfCommunicateUuid: data.selfCommunicateUuid.clone(),
+    //         peerCommunicateUuid: data.peerCommunicateUuid.clone(),
+    //         serverUuid: data.serverUuid.clone(),
+    //         objectUuid: data.objectUuid.clone(),
+    //         result: "success".to_string()
+    //     });
+    //     return true;
+    // }) {
+    //     Ok(cli) => cli,
+    //     Err(err) => {
+    //         println!("new error, err: {}", err);
+    //         return;
+    //     }
+    // };
+    let mut cli = match simple::CSimple::new(&(*server), |data: &response::CResponse| -> bool {
         let mut file = OpenOptions::new().append(true).create(true).open("test.txt").expect("open file error");
         file.write_all(data.data.as_slice());
-        // println!("recv data: {}", String::from_utf8(data.data).unwrap());
         return true;
+    }, |data: &response::CResponse| -> Option<request::CAck> {
+        Some(request::CAck{
+            selfCommunicateUuid: data.selfCommunicateUuid.clone(),
+            peerCommunicateUuid: data.peerCommunicateUuid.clone(),
+            serverUuid: data.serverUuid.clone(),
+            objectUuid: data.objectUuid.clone(),
+            result: "success".to_string()
+        })
     }) {
         Ok(cli) => cli,
         Err(err) => {
@@ -51,6 +77,31 @@ fn main() {
         }
     };
     println!("serverUuid: {}", &serverUuid);
+
+    // sync send to peer
+    loop {
+        cli.sendDataUtilPeerAck(&mut request::CData{
+            selfCommunicateUuid: (*selfUuid).to_string(),
+            peerCommunicateUuid: (*peerUuid).to_string(),
+            serverUuid: serverUuid.clone(),
+            objectUuid: (*objectUuid).to_string(),
+            packageIndex: 0,
+            packageTotal: 0,
+            data: (*data).as_bytes().to_vec(),
+            extraData: (*extraData).as_bytes().to_vec()
+        }, |peerResult: &str| -> bool {
+            if peerResult == "success" {
+                return true;
+            }
+            false
+        }, 30);
+        thread::sleep(time::Duration::from_secs(3));
+    }
+    /*
+    */
+
+    /*
+    // async send to peer
     thread::spawn(move || {
         let cli = Arc::new(cli);
         loop {
@@ -71,6 +122,7 @@ fn main() {
             thread::sleep(time::Duration::from_millis(50));
         }
     });
+    */
 
     // let mut cli = simple::CSimple::new("").unwrap();
     // <simple::CSimple as client::IClient>::dataRecv(&mut cli, move |_data: &response::CResponse| -> bool {
