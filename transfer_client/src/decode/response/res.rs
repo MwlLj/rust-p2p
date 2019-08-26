@@ -48,9 +48,9 @@ macro_rules! decode_response {
                 Err(_) => "".to_string()
             };
         } else if $index == 17 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $response.packageIndex);
+            u8arr::u8arrTou64($data.as_slice(), &mut $response.u64Field1);
         } else if $index == 19 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $response.packageTotal);
+            u8arr::u8arrTou64($data.as_slice(), &mut $response.u64Field2);
         } else if $index == 21 {
             $response.data = $data;
         } else if $index == 23 {

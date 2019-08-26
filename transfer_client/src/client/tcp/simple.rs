@@ -127,7 +127,7 @@ impl CSimple {
 
     pub fn sendDataUtilPeerAck<F>(&mut self, data: &mut request::CData
         , f: F, timeoutS: u64) -> Result<(), &str>
-            where F: Fn(&str) -> bool {
+            where F: Fn(&response::CPeerAck) -> bool {
         let v = encode::request::req::encodeData(data);
         {
             let mut writer = BufWriter::new(&self.stream);
@@ -169,7 +169,7 @@ impl CSimple {
                 return Err("recv ack timeout error");
             }
         };
-        if !f(&ack.peerResult) {
+        if !f(&ack) {
             println!("peer response error, result: {}", ack.peerResult);
             return Err("peer response error");
         }
@@ -257,7 +257,12 @@ impl CSimple {
         };
         sender.send(response::CPeerAck{
             dataUuid: response.dataUuid.clone(),
-            peerResult: response.peerResult.clone()
+            objectUuid: response.objectUuid.clone(),
+            peerResult: response.peerResult.clone(),
+            u64Field1: response.u64Field1,
+            u64Field2: response.u64Field2,
+            data: response.data.clone(),
+            extraData: response.extraData.clone()
         });
     }
 

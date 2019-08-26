@@ -60,7 +60,12 @@ fn main() {
             peerCommunicateUuid: data.peerCommunicateUuid.clone(),
             serverUuid: data.serverUuid.clone(),
             dataUuid: data.dataUuid.clone(),
-            result: "success".to_string()
+            objectUuid: data.objectUuid.clone(),
+            result: "success".to_string(),
+            u64Field1: 0,
+            u64Field2: 0,
+            data: data.data.clone(),
+            extraData: data.extraData.clone()
         })
     }) {
         Ok(cli) => cli,
@@ -90,8 +95,8 @@ fn main() {
             serverUuid: serverUuid.clone(),
             dataUuid: uid,
             objectUuid: (*objectUuid).to_string(),
-            packageIndex: 0,
-            packageTotal: 0,
+            u64Field1: 0,
+            u64Field2: 0,
             data: (*data).as_bytes().to_vec(),
             extraData: (*extraData).as_bytes().to_vec()
         }, |peerResult: &str| -> bool {
