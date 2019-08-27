@@ -1,76 +1,99 @@
-use transfer_client::client::tcp::simple;
-use transfer_client::structs::{request, response};
+extern crate transfer_file;
+
+use transfer_file::send;
+use transfer_file::recv;
+use transfer_file::consts;
+use transfer_file::structs;
 
 use rust_parse::cmd::CCmd;
+use uuid;
 
 use std::thread;
 use std::time;
-use std::sync::Arc;
-use std::fs::OpenOptions;
-use std::fs::File;
-use std::io::prelude::*;
 
-fn main() {
+fn start() {
     let mut cmdHandler = CCmd::new();
+    let mode = cmdHandler.register("-mode", "");
     let server = cmdHandler.register("-server", "127.0.0.1:20001");
     let selfUuid = cmdHandler.register("-self", "123456");
     let peerUuid = cmdHandler.register("-peer", "654321");
-    let objectUuid = cmdHandler.register("-obj", "123");
-    let data = cmdHandler.register("-data", "hello");
+    let objectUuid = cmdHandler.register("-obj", "");
     let extraData = cmdHandler.register("-extraData", "");
+    let onceMax = cmdHandler.register("-once-max", "256");
+    let connectTimeoutS = cmdHandler.register("-conn-timeouts", "10");
     cmdHandler.parse();
 
+    let mode = mode.borrow();
+    if *mode == "" {
+        println!("please input mode, if send, input: -mode send; if recv, input: -mode recv");
+        return;
+    }
     let server = server.borrow().to_string();
     let selfUuid = selfUuid.borrow().to_string();
     let peerUuid = peerUuid.borrow().to_string();
-    let objectUuid = objectUuid.borrow().to_string();
-    let data = data.borrow().to_string();
+    let objectUuid = objectUuid.borrow();
     let extraData = extraData.borrow().to_string();
+    let mut objUuid = objectUuid.to_string();
+    if objUuid == "" {
+        objUuid = uuid::Uuid::new_v4().to_string();
+    }
+    let onceMax = match onceMax.borrow().parse::<u64>() {
+        Ok(v) => v,
+        Err(err) => {
+            println!("onceMax is invalid, err: {}", err);
+            return;
+        }
+    };
+    let connectTimeoutS = match connectTimeoutS.borrow().parse::<u64>() {
+        Ok(v) => v,
+        Err(err) => {
+            println!("connectTimeoutS is invalid, err: {}", err);
+            return;
+        }
+    };
 
-    let cli = match simple::CSimple::new(&(*server), |data: &response::CResponse, s: &simple::CSimple| -> bool {
-        let mut file = OpenOptions::new().append(true).create(true).open("test.txt").expect("open file error");
-        file.write_all(data.data.as_slice());
-        // println!("recv data: {}", String::from_utf8(data.data).unwrap());
-        return true;
-    }) {
-        Ok(cli) => cli,
-        Err(err) => {
-            println!("new error, err: {}", err);
-            return;
-        }
-    };
-    let serverUuid = match cli.connect(&mut request::CConnect{
-        selfCommunicateUuid: (*selfUuid).to_string()
-    }, 3) {
-        Ok(serverUuid) => serverUuid,
-        Err(err) => {
-            println!("connect error, err: {}", err);
-            return;
-        }
-    };
-    println!("serverUuid: {}", &serverUuid);
-    thread::spawn(move || {
-        let cli = Arc::new(cli);
-        loop {
-            let cli = cli.clone();
-            if let Err(err) = cli.sendAsync(&mut request::CData{
-                selfCommunicateUuid: (*selfUuid).to_string(),
-                peerCommunicateUuid: (*peerUuid).to_string(),
-                serverUuid: serverUuid.clone(),
-                objectUuid: (*objectUuid).to_string(),
-                packageIndex: 0,
-                packageTotal: 0,
-                data: (*data).as_bytes().to_vec(),
-                extraData: (*extraData).as_bytes().to_vec()
-            }) {
-                println!("sendAsyn error, err: {}", err);
+    if *mode == consts::input::mode_send {
+        let send = match send::full::send::CSend::new(&structs::input::CStartParam{
+            server: server,
+            selfUuid: selfUuid,
+            peerUuid: peerUuid,
+            objectUuid: objUuid,
+            extraData: Vec::from(extraData),
+            onceMaxLen: onceMax,
+            connectTimeoutS: connectTimeoutS
+        }) {
+            Some(s) => s,
+            None => {
+                println!("send new error");
                 return;
-            };
-            thread::sleep(time::Duration::from_millis(50));
-        }
-    });
+            }
+        };
+    } else if *mode == consts::input::mode_recv {
+        let recv = match recv::full::recv::CRecv::new(&structs::input::CStartParam{
+            server: server,
+            selfUuid: selfUuid,
+            peerUuid: peerUuid,
+            objectUuid: objUuid,
+            extraData: Vec::from(extraData),
+            onceMaxLen: onceMax,
+            connectTimeoutS: connectTimeoutS
+        }) {
+            Some(r) => r,
+            None => {
+                println!("recv new error");
+                return;
+            }
+        };
+    } else {
+        println!("mode is not support");
+        return;
+    }
 
     loop {
         thread::sleep(time::Duration::from_secs(10));
     }
+}
+
+fn main() {
+    start();
 }

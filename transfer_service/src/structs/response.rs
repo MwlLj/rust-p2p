@@ -8,8 +8,8 @@ full response:
     dataUuid
     objectUuid
     peerResult
-    packageIndex
-    packageTotal
+    u64Field1
+    u64Field2
     data
     extraData
 */

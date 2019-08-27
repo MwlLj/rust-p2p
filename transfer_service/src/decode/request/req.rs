@@ -43,9 +43,9 @@ macro_rules! decode_request {
                 Err(_) => "".to_string()
             };
         } else if $index == 15 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageIndex);
+            u8arr::u8arrTou64($data.as_slice(), &mut $request.u64Field1);
         } else if $index == 17 {
-            u8arr::u8arrTou64($data.as_slice(), &mut $request.packageTotal);
+            u8arr::u8arrTou64($data.as_slice(), &mut $request.u64Field2);
         } else if $index == 19 {
             $request.data = $data;
         } else if $index == 21 {

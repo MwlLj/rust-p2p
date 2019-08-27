@@ -18,6 +18,15 @@ use std::sync::Mutex;
 use std::thread;
 use std::collections::HashMap;
 
+pub enum ResultCode {
+    PosError(u64),
+    WriteError,
+    LockError,
+    Timeout,
+    ResponseError,
+    Error
+}
+
 // type DataAckCb = FnMut<&mut request::CAck>;
 // type DataRecvCb = Box<dyn Fn(&response::CResponse, &CSimple) -> bool + Send + Sync>;
 type DataRecvCb = Box<dyn Fn(&response::CResponse) -> bool + Send + Sync>;
@@ -126,16 +135,16 @@ impl CSimple {
     // }
 
     pub fn sendDataUtilPeerAck<F>(&mut self, data: &mut request::CData
-        , f: F, timeoutS: u64) -> Result<(), &str>
-            where F: Fn(&response::CPeerAck) -> bool {
+        , mut f: F, timeoutS: u64) -> Result<(), ResultCode>
+            where F: FnMut(&response::CPeerAck) -> Result<(), ResultCode> {
         let v = encode::request::req::encodeData(data);
         {
             let mut writer = BufWriter::new(&self.stream);
             if let Err(err) = writer.write_all(&v) {
-                return Err("write all error");
+                return Err(ResultCode::WriteError);
             };
             if let Err(err) = writer.flush() {
-                return Err("flush error");
+                return Err(ResultCode::WriteError);
             };
         }
         let (s, r) = mpsc::channel();
@@ -145,7 +154,7 @@ impl CSimple {
                 Ok(d) => d,
                 Err(err) => {
                     println!("dataSyncSenders lock error, err: {}", err);
-                    return Err("dataSyncSenders lock error");
+                    return Err(ResultCode::LockError);
                 }
             };
             dataSyncSenders.insert(data.dataUuid.clone(), Arc::new(Mutex::new(s)));
@@ -166,13 +175,16 @@ impl CSimple {
             Ok(ack) => ack,
             Err(err) => {
                 println!("recv ack timeout error, err: {}", err);
-                return Err("recv ack timeout error");
+                return Err(ResultCode::Timeout);
             }
         };
-        if !f(&ack) {
-            println!("peer response error, result: {}", ack.peerResult);
-            return Err("peer response error");
+        if let Err(e) = f(&ack) {
+            return Err(e);
         }
+        // if !f(&ack) {
+        //     println!("peer response error, result: {}", ack.peerResult);
+        //     return Err(ResultCode::ResponseError);
+        // }
         Ok(())
     }
 }

@@ -37,8 +37,9 @@ pub fn encodeData(req: &mut request::CData) -> Vec<u8> {
     u8arr::u64AppendTou8arr(req.objectUuid.len() as u64, 1, &mut buf);
     buf.append(&mut req.objectUuid.as_bytes().to_vec());
     u8arr::u64AppendTou8arr(0, 4, &mut buf);
-    u8arr::u32NumberAppendTou8arr(req.u64Field1, &mut buf);
-    u8arr::u32NumberAppendTou8arr(req.u64Field2, &mut buf);
+    u8arr::u64NumberAppendTou8arr(req.u64Field1, &mut buf);
+    u8arr::u64NumberAppendTou8arr(req.u64Field2, &mut buf);
+    // println!("{:?}", &buf);
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
     u8arr::u64AppendTou8arr(req.extraData.len() as u64, 4, &mut buf);
@@ -68,8 +69,8 @@ pub fn encodeAck(req: &mut request::CAck) -> Vec<u8> {
     // u8arr::u64AppendTou8arr(0, 1, &mut buf);
     u8arr::u64AppendTou8arr(req.result.len() as u64, 4, &mut buf);
     buf.append(&mut req.result.as_bytes().to_vec());
-    u8arr::u32NumberAppendTou8arr(req.u64Field1, &mut buf);
-    u8arr::u32NumberAppendTou8arr(req.u64Field2, &mut buf);
+    u8arr::u64NumberAppendTou8arr(req.u64Field1, &mut buf);
+    u8arr::u64NumberAppendTou8arr(req.u64Field2, &mut buf);
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
     u8arr::u64AppendTou8arr(req.extraData.len() as u64, 4, &mut buf);
@@ -78,5 +79,6 @@ pub fn encodeAck(req: &mut request::CAck) -> Vec<u8> {
     // u8arr::u64AppendTou8arr(0, 1, &mut buf);
     // u8arr::u64AppendTou8arr(0, 4, &mut buf);
     // u8arr::u64AppendTou8arr(0, 4, &mut buf);
+    // println!("{:?}", &buf);
     buf
 }
