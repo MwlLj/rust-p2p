@@ -29,7 +29,7 @@ pub enum ResultCode {
 
 // type DataAckCb = FnMut<&mut request::CAck>;
 // type DataRecvCb = Box<dyn Fn(&response::CResponse, &CSimple) -> bool + Send + Sync>;
-type DataRecvCb = Box<dyn Fn(&response::CResponse) -> bool + Send + Sync>;
+// type DataRecvCb = FnOnce(&response::CResponse) -> bool;
 type DataAckCb = Box<dyn Fn(&response::CResponse) -> Option<request::CAck> + Send + Sync>;
 type SyncSenders = HashMap<String, Arc<Mutex<mpsc::Sender<response::CPeerAck>>>>;
 
@@ -190,11 +190,12 @@ impl CSimple {
 }
 
 impl CSimple {
-    fn startLoop(stream: TcpStream
-        , dataRecvCb: Arc<DataRecvCb>
+    fn startLoop<F: Copy>(stream: TcpStream
+        , dataRecvCb: F
         , dataAckCb: Arc<DataAckCb>
         , ackSend: Arc<Mutex<mpsc::Sender<response::CAck>>>
-        , dataSyncSenders: Arc<Mutex<SyncSenders>>) {
+        , dataSyncSenders: Arc<Mutex<SyncSenders>>)
+        where F: FnOnce(&response::CResponse) -> bool {
         let s = match stream.try_clone() {
             Ok(s) => s,
             Err(err) => {
@@ -212,7 +213,7 @@ impl CSimple {
             if response.responseMode == consts::proto::response_mode_ack {
                 CSimple::handleAck(ackSend.clone(), response);
             } else if response.responseMode == consts::proto::response_mode_data {
-                CSimple::handleData(&stream, dataRecvCb.clone(), dataAckCb.clone(), response);
+                CSimple::handleData(&stream, dataRecvCb, dataAckCb.clone(), response);
             } else if response.responseMode == consts::proto::request_mode_peer_ack {
                 CSimple::handlePeerAck(dataSyncSenders.clone(), response);
             }
@@ -220,8 +221,9 @@ impl CSimple {
         });
     }
 
-    fn handleData(stream: &TcpStream, dataRecvCb: Arc<DataRecvCb>, dataAckCb: Arc<DataAckCb>, response: &response::CResponse) {
-        (*dataRecvCb)(response);
+    fn handleData<F: Copy>(stream: &TcpStream, dataRecvCb: F, dataAckCb: Arc<DataAckCb>, response: &response::CResponse)
+    where F: FnOnce(&response::CResponse) -> bool {
+        dataRecvCb(response);
         match (*dataAckCb)(response) {
             Some(mut ack) => {
                 CSimple::sendAckToPeerAsync(stream, &mut ack);
@@ -362,9 +364,9 @@ impl CSimple {
 }
 
 impl CSimple {
-    pub fn new<F: 'static + Send + Sync, AckF: 'static + Send + Sync>(server: &str, f: F, ackF: AckF) -> Result<CSimple, &str>
+    pub fn new<F: 'static + Send + Sync + Copy, AckF: 'static + Send + Sync>(server: &str, f: F, ackF: AckF) -> Result<CSimple, &str>
         // where F: Fn(&response::CResponse, &CSimple) -> bool {
-        where F: Fn(&response::CResponse) -> bool
+        where F: FnOnce(&response::CResponse) -> bool
         , AckF: Fn(&response::CResponse) -> Option<request::CAck> {
         let stream = match TcpStream::connect(server) {
             Ok(s) => s,
@@ -385,7 +387,7 @@ impl CSimple {
             dataSyncSenders: dataSyncSenders.clone()
         };
         thread::spawn(move || {
-            CSimple::startLoop(stream, Arc::new(Box::new(f)), Arc::new(Box::new(ackF)), ackSend, dataSyncSenders);
+            CSimple::startLoop(stream, f, Arc::new(Box::new(ackF)), ackSend, dataSyncSenders);
         });
         Ok(simple)
     }
