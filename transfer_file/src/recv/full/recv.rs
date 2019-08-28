@@ -95,6 +95,8 @@ impl CRecv {
                         }
                     };
                     paths.remove(&data.objectUuid);
+                }
+                if data.u64Field2 == s1 {
                     {
                         let mut recorder = match recorder.lock() {
                             Ok(r) => r,
@@ -109,9 +111,11 @@ impl CRecv {
             let mut writer = match file::full::write::CWrite::new(&path) {
                 Some(w) => w,
                 None => {
-                    *resultCell.borrow_mut() = consts::errors::error.to_string();
-                    ack.result = consts::errors::error.to_string();
-                    println!("new write error, path: {}", &path);
+                    // *resultCell.borrow_mut() = consts::errors::error.to_string();
+                    // ack.result = consts::errors::error.to_string();
+                    // println!("new write error, path: {}", &path);
+                    ack.u64Field1 = s2;
+                    ack.result = consts::errors::pos_error.to_string();
                     return Some(ack);
                 }
             };
