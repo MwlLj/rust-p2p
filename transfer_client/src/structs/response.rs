@@ -14,7 +14,7 @@ full response:
     extraData
 */
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CResponse {
     pub responseMode: String,
     pub serverUuid: String,
@@ -30,13 +30,13 @@ pub struct CResponse {
     pub extraData: Vec<u8>
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CAck {
     pub serverUuid: String,
     pub result: u8
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CPeerAck {
     pub dataUuid: String,
     pub objectUuid: String,

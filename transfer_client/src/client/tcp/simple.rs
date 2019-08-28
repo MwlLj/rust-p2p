@@ -269,6 +269,7 @@ impl CSimple {
                 return;
             }
         };
+        // println!("{:?}", response);
         sender.send(response::CPeerAck{
             dataUuid: response.dataUuid.clone(),
             objectUuid: response.objectUuid.clone(),

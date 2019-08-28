@@ -71,6 +71,7 @@ pub fn encodeAck(req: &mut request::CAck) -> Vec<u8> {
     buf.append(&mut req.result.as_bytes().to_vec());
     u8arr::u64NumberAppendTou8arr(req.u64Field1, &mut buf);
     u8arr::u64NumberAppendTou8arr(req.u64Field2, &mut buf);
+    // println!("{:?}", &buf);
     u8arr::u64AppendTou8arr(req.data.len() as u64, 4, &mut buf);
     buf.append(&mut req.data);
     u8arr::u64AppendTou8arr(req.extraData.len() as u64, 4, &mut buf);
