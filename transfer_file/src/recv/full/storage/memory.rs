@@ -1,22 +1,45 @@
 use super::IStorage;
 
+use std::collections::HashMap;
+
 pub struct CMemory {
-    position: u64
+    positions: HashMap<String, u64>
 }
 
 impl CMemory {
-    pub fn load(objectUuid: &str) -> Option<Self> {
+    pub fn new() -> Option<Self> {
         Some(CMemory{
-            position: 0
+            positions: HashMap::new()
         })
     }
 
-    pub fn readPos(&self) -> u64 {
-        self.position
+    pub fn readPos(&mut self, objectUuid: &str) -> u64 {
+        match self.positions.get(objectUuid) {
+            Some(p) => {
+                return *p;
+            },
+            None => {
+                self.positions.insert(objectUuid.to_string(), 0);
+                return 0;
+            }
+        }
+        0
     }
 
-    pub fn writePos(&mut self, pos: u64) -> Result<(), &str> {
-        self.position = pos;
+    pub fn writePos(&mut self, pos: u64, objectUuid: &str) -> Result<(), &str> {
+        match self.positions.get_mut(objectUuid) {
+            Some(p) => {
+                *p = pos;
+            },
+            None => {
+                self.positions.insert(objectUuid.to_string(), 0);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn del(&mut self, objectUuid: &str) -> Result<(), &str> {
+        self.positions.remove(objectUuid);
         Ok(())
     }
 }

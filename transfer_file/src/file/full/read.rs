@@ -13,7 +13,7 @@ pub struct CRead {
 
 impl CRead {
     pub fn read<F>(&self, start: u64, limit: u64, f: &mut F) -> Result<(), &str>
-        where F: FnMut(&u64, &u64, Vec<u8>) -> ResultCode {
+        where F: FnMut(&u64, &u64, &u64, Vec<u8>) -> ResultCode {
         let mut offset = start;
         let meta = match self.file.metadata() {
             Ok(m) => m,
@@ -59,7 +59,7 @@ impl CRead {
                         println!("file end ...");
                         break;
                     }
-                    match (*f)(&offset, &once, vec) {
+                    match (*f)(&offset, &once, &total, vec) {
                         ResultCode::Error => {
                             return Err("function return error");
                         },

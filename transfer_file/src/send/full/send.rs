@@ -50,7 +50,7 @@ impl CSend {
         };
         // get start position
         let startPos = self.recorder.readPos();
-        read.read(startPos, param.onceMaxLen, &mut |start: &u64, once: &u64, data: Vec<u8>| -> file::full::read::ResultCode {
+        read.read(startPos, param.onceMaxLen, &mut |start: &u64, once: &u64, total: &u64, data: Vec<u8>| -> file::full::read::ResultCode {
             let next = start + once;
             println!("next: {}", &next);
             let uid = uuid::Uuid::new_v4().to_string();
@@ -61,7 +61,7 @@ impl CSend {
                 dataUuid: uid,
                 objectUuid: param.objectUuid.clone(),
                 u64Field1: next,
-                u64Field2: 0,
+                u64Field2: *total,
                 data: data,
                 extraData: param.extraData.clone()
             }, |ack: &response::CPeerAck| -> Result<(), simple::ResultCode> {

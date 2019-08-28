@@ -21,6 +21,8 @@ fn start() {
     let extraData = cmdHandler.register("-extraData", "");
     let onceMax = cmdHandler.register("-once-max", "256");
     let connectTimeoutS = cmdHandler.register("-conn-timeouts", "10");
+    let downloadRoot = cmdHandler.register("-download-root", "./dst");
+    let writeFileMode = cmdHandler.register("-write-file-mode", consts::input::file_write_mode_create);
     cmdHandler.parse();
 
     let mode = mode.borrow();
@@ -35,7 +37,8 @@ fn start() {
     let extraData = extraData.borrow().to_string();
     let mut objUuid = objectUuid.to_string();
     if objUuid == "" {
-        objUuid = uuid::Uuid::new_v4().to_string();
+        // objUuid = uuid::Uuid::new_v4().to_string();
+        objUuid = extraData.clone();
     }
     let onceMax = match onceMax.borrow().parse::<u64>() {
         Ok(v) => v,
@@ -51,6 +54,8 @@ fn start() {
             return;
         }
     };
+    let downloadRoot = downloadRoot.borrow().to_string();
+    let writeFileMode = writeFileMode.borrow().to_string();
 
     if *mode == consts::input::mode_send {
         let send = match send::full::send::CSend::new(&structs::input::CStartParam{
@@ -60,7 +65,9 @@ fn start() {
             objectUuid: objUuid,
             extraData: Vec::from(extraData),
             onceMaxLen: onceMax,
-            connectTimeoutS: connectTimeoutS
+            connectTimeoutS: connectTimeoutS,
+            downloadRoot: downloadRoot,
+            writeFileMode: writeFileMode
         }) {
             Some(s) => s,
             None => {
@@ -76,7 +83,9 @@ fn start() {
             objectUuid: objUuid,
             extraData: Vec::from(extraData),
             onceMaxLen: onceMax,
-            connectTimeoutS: connectTimeoutS
+            connectTimeoutS: connectTimeoutS,
+            downloadRoot: downloadRoot,
+            writeFileMode: writeFileMode
         }) {
             Some(r) => r,
             None => {
