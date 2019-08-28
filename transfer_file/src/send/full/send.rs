@@ -75,7 +75,7 @@ impl CSend {
                     return Err(simple::ResultCode::PosError(ack.u64Field1));
                 }
                 Err(simple::ResultCode::Error)
-            }, 30) {
+            }, param.sendTimeoutS) {
                 Ok(()) => {},
                 Err(err) => {
                     match err {

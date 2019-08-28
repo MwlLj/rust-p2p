@@ -18,9 +18,10 @@ fn start() {
     let selfUuid = cmdHandler.register("-self", "123456");
     let peerUuid = cmdHandler.register("-peer", "654321");
     let objectUuid = cmdHandler.register("-obj", "");
-    let extraData = cmdHandler.register("-extraData", "");
+    let extraData = cmdHandler.register("-extra-data", "");
     let onceMax = cmdHandler.register("-once-max", "256");
     let connectTimeoutS = cmdHandler.register("-conn-timeouts", "10");
+    let sendTimeoutS = cmdHandler.register("-send-timeouts", "60");
     let downloadRoot = cmdHandler.register("-download-root", "./dst");
     let writeFileMode = cmdHandler.register("-write-file-mode", consts::input::file_write_mode_create);
     cmdHandler.parse();
@@ -54,6 +55,13 @@ fn start() {
             return;
         }
     };
+    let sendTimeoutS = match sendTimeoutS.borrow().parse::<u64>() {
+        Ok(v) => v,
+        Err(err) => {
+            println!("sendTimeoutS is invalid, err: {}", err);
+            return;
+        }
+    };
     let downloadRoot = downloadRoot.borrow().to_string();
     let writeFileMode = writeFileMode.borrow().to_string();
 
@@ -66,6 +74,7 @@ fn start() {
             extraData: Vec::from(extraData),
             onceMaxLen: onceMax,
             connectTimeoutS: connectTimeoutS,
+            sendTimeoutS: sendTimeoutS,
             downloadRoot: downloadRoot,
             writeFileMode: writeFileMode
         }) {
@@ -84,6 +93,7 @@ fn start() {
             extraData: Vec::from(extraData),
             onceMaxLen: onceMax,
             connectTimeoutS: connectTimeoutS,
+            sendTimeoutS: sendTimeoutS,
             downloadRoot: downloadRoot,
             writeFileMode: writeFileMode
         }) {

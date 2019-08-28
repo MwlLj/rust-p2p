@@ -6,6 +6,7 @@ pub struct CStartParam {
     pub extraData: Vec<u8>,
     pub onceMaxLen: u64,
     pub connectTimeoutS: u64,
+    pub sendTimeoutS: u64,
     pub downloadRoot: String,
     pub writeFileMode: String
 }
