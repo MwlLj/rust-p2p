@@ -17,7 +17,7 @@
 
 ### 接收端使用示例
 ```
-transfer_file.exe -self 654321 -peer 123456 -mode recv -write-file-mode create -server 180.167.205.74:51110
+transfer_file.exe -self 654321 -mode recv -write-file-mode create -server 180.167.205.74:51110
 ```
 
 ### 发送端使用示例
