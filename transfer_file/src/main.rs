@@ -10,12 +10,13 @@ use uuid;
 
 use std::thread;
 use std::time;
+use std::path::Path;
 
 fn start() {
     let mut cmdHandler = CCmd::new();
     let mode = cmdHandler.register("-mode", "");
     let server = cmdHandler.register("-server", "127.0.0.1:20001");
-    let selfUuid = cmdHandler.register("-self", "123456");
+    let selfUuid = cmdHandler.register("-self", "");
     let peerUuid = cmdHandler.register("-peer", "654321");
     let objectUuid = cmdHandler.register("-obj", "");
     let extraData = cmdHandler.register("-extra-data", "");
@@ -32,14 +33,37 @@ fn start() {
         return;
     }
     let server = server.borrow().to_string();
-    let selfUuid = selfUuid.borrow().to_string();
+    let selfUuid = selfUuid.borrow();
     let peerUuid = peerUuid.borrow().to_string();
     let objectUuid = objectUuid.borrow();
     let extraData = extraData.borrow().to_string();
+    let fileName = match Path::new(&extraData).file_name() {
+        Some(f) => {
+            let f = match f.to_str() {
+                Some(f) => f,
+                None => {
+                    println!("to str error");
+                    return;
+                }
+            };
+            f
+        },
+        None => {
+            println!("get file_name error");
+            return;
+        }
+    };
+    let fileName = fileName.to_string();
+    println!("fileName: {:?}", &fileName);
+    let mut selfId = selfUuid.to_string();
+    if selfId == "" {
+        selfId = uuid::Uuid::new_v4().to_string();
+    }
+    println!("self id: {}", &selfId);
     let mut objUuid = objectUuid.to_string();
     if objUuid == "" {
         // objUuid = uuid::Uuid::new_v4().to_string();
-        objUuid = extraData.clone();
+        objUuid = fileName.to_string()
     }
     let onceMax = match onceMax.borrow().parse::<u64>() {
         Ok(v) => v,
@@ -68,10 +92,11 @@ fn start() {
     if *mode == consts::input::mode_send {
         let send = match send::full::send::CSend::new(&structs::input::CStartParam{
             server: server,
-            selfUuid: selfUuid,
+            selfUuid: selfId,
             peerUuid: peerUuid,
             objectUuid: objUuid,
-            extraData: Vec::from(extraData),
+            filePath: extraData,
+            fileName: fileName.clone(),
             onceMaxLen: onceMax,
             connectTimeoutS: connectTimeoutS,
             sendTimeoutS: sendTimeoutS,
@@ -87,10 +112,11 @@ fn start() {
     } else if *mode == consts::input::mode_recv {
         let recv = match recv::full::recv::CRecv::new(&structs::input::CStartParam{
             server: server,
-            selfUuid: selfUuid,
+            selfUuid: selfId,
             peerUuid: peerUuid,
             objectUuid: objUuid,
-            extraData: Vec::from(extraData),
+            filePath: extraData,
+            fileName: fileName.clone(),
             onceMaxLen: onceMax,
             connectTimeoutS: connectTimeoutS,
             sendTimeoutS: sendTimeoutS,

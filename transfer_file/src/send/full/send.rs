@@ -6,6 +6,8 @@ use super::storage;
 use transfer_client::client::tcp::simple;
 use transfer_client::structs::{request, response};
 
+use std::path::Path;
+
 type RecordStorage = storage::memory::CMemory;
 
 pub struct CSend {
@@ -14,13 +16,6 @@ pub struct CSend {
 
 impl CSend {
     fn start(&mut self, param: &structs::input::CStartParam) -> Result<(), &str> {
-        let path = match String::from_utf8(param.extraData.clone()) {
-            Ok(p) => p,
-            Err(err) => {
-                println!("extraData is not valid file path, err: {}", err);
-                return Err("extraData is not valid file path");
-            }
-        };
         let mut cli = match simple::CSimple::new(&param.server, |data: &response::CResponse| -> bool {
             return true;
         }, |data: &response::CResponse| -> Option<request::CAck> {
@@ -41,7 +36,7 @@ impl CSend {
                 return Err("connect error");
             }
         };
-        let read = match file::full::read::CRead::new(&path) {
+        let read = match file::full::read::CRead::new(&param.filePath) {
             Some(r) => r,
             None => {
                 println!("new CRead error");
@@ -63,7 +58,7 @@ impl CSend {
                 u64Field1: next,
                 u64Field2: *total,
                 data: data,
-                extraData: param.extraData.clone()
+                extraData: Vec::from(param.fileName.as_str())
             }, |ack: &response::CPeerAck| -> Result<(), simple::ResultCode> {
                 if ack.peerResult == consts::errors::success {
                     if let Err(err) = self.recorder.writePos(next) {
