@@ -49,8 +49,9 @@ fn start() {
             f
         },
         None => {
-            println!("get file_name error");
-            return;
+            // println!("get file_name error");
+            // return;
+            ""
         }
     };
     let fileName = fileName.to_string();
@@ -62,8 +63,11 @@ fn start() {
     println!("self id: {}", &selfId);
     let mut objUuid = objectUuid.to_string();
     if objUuid == "" {
-        // objUuid = uuid::Uuid::new_v4().to_string();
-        objUuid = fileName.to_string()
+        if fileName == "" {
+            objUuid = uuid::Uuid::new_v4().to_string();
+        } else {
+            objUuid = fileName.to_string()
+        }
     }
     let onceMax = match onceMax.borrow().parse::<u64>() {
         Ok(v) => v,
